@@ -30,74 +30,85 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse)
 async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
-    # Check email uniqueness
-    existing_email = await db.execute(select(User).where(User.email == payload.email.lower()))
-    if existing_email.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email already exists."
+    try:
+        # Check email uniqueness
+        existing_email = await db.execute(select(User).where(User.email == payload.email.lower()))
+        if existing_email.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email already exists."
+            )
+
+        # Check username uniqueness
+        existing_user = await db.execute(select(User).where(User.username == payload.username.lower()))
+        if existing_user.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This username is already taken. Please choose another."
+            )
+
+        # Create User
+        new_user = User(
+            email=payload.email.lower(),
+            username=payload.username.lower(),
+            full_name=payload.full_name,
+            hashed_password=get_password_hash(payload.password),
+            is_active=True,
+            is_onboarded=False,
         )
+        db.add(new_user)
+        await db.flush()
 
-    # Check username uniqueness
-    existing_user = await db.execute(select(User).where(User.username == payload.username.lower()))
-    if existing_user.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This username is already taken. Please choose another."
+        # Create Default Profile
+        profile = Profile(
+            user_id=new_user.id,
+            avatar_url=payload.avatar_url,
+            level=1,
+            xp=0,
+            current_streak=0,
+            longest_streak=0,
+            total_habits_completed=0,
+            overall_consistency=0,
+            available_shields=2,
         )
+        db.add(profile)
 
-    # Create User
-    new_user = User(
-        email=payload.email.lower(),
-        username=payload.username.lower(),
-        full_name=payload.full_name,
-        hashed_password=get_password_hash(payload.password),
-        is_active=True,
-        is_onboarded=False,
-    )
-    db.add(new_user)
-    await db.flush()
+        # Create Default Settings
+        user_settings = UserSettings(
+            user_id=new_user.id,
+            theme="light",
+            week_start_day="monday",
+            time_format="12h",
+        )
+        db.add(user_settings)
+        await db.flush()
+        await db.commit()
 
-    # Create Default Profile
-    profile = Profile(
-        user_id=new_user.id,
-        avatar_url=payload.avatar_url,
-        level=1,
-        xp=0,
-        current_streak=0,
-        longest_streak=0,
-        total_habits_completed=0,
-        overall_consistency=0,
-        available_shields=2,
-    )
-    db.add(profile)
+        # Create JWT Token
+        access_token = create_access_token(subject=str(new_user.id))
 
-    # Create Default Settings
-    user_settings = UserSettings(
-        user_id=new_user.id,
-        theme="light",
-        week_start_day="monday",
-        time_format="12h",
-    )
-    db.add(user_settings)
-    await db.flush()
+        # Reload with relationships
+        query = (
+            select(User)
+            .options(selectinload(User.profile), selectinload(User.settings))
+            .where(User.id == new_user.id)
+        )
+        user_full = (await db.execute(query)).scalar_one()
 
-    # Create JWT Token
-    access_token = create_access_token(subject=str(new_user.id))
-
-    # Reload with relationships
-    query = (
-        select(User)
-        .options(selectinload(User.profile), selectinload(User.settings))
-        .where(User.id == new_user.id)
-    )
-    user_full = (await db.execute(query)).scalar_one()
-
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=UserOut.model_validate(user_full)
-    )
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserOut.model_validate(user_full)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        print(f"Server error during user registration: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to complete registration on the server. Please try again."
+        )
 
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):

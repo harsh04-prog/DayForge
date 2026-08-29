@@ -4,16 +4,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# On Vercel, writeable directory is /tmp
+# On Vercel, the writeable filesystem is in /tmp
 IS_VERCEL = bool(os.getenv("VERCEL"))
 if IS_VERCEL:
-    DEFAULT_DB_PATH = "/tmp/dayforge.db"
+    DB_FILE = Path("/tmp/dayforge.db")
     UPLOAD_DIR = Path("/tmp/uploads")
 else:
-    DEFAULT_DB_PATH = str(BASE_DIR / "dayforge.db")
+    DB_FILE = BASE_DIR / "dayforge.db"
     UPLOAD_DIR = BASE_DIR / "app" / "uploads"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+DEFAULT_DB_URL = f"sqlite+aiosqlite:///{DB_FILE.as_posix()}"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "DayForge"
@@ -26,7 +29,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Database (supports SQLite local/tmp or PostgreSQL like Neon/Supabase)
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite+aiosqlite:///{DEFAULT_DB_PATH}")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
     
     # CORS (allows Vercel preview domains and production origins)
     CORS_ORIGINS: list[str] = [

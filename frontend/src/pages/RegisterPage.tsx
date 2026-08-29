@@ -8,7 +8,7 @@ import { Card } from '../components/common/Card';
 import { DayForgeLogo } from '../components/common/DayForgeLogo';
 import { AvatarSelector } from '../components/common/AvatarSelector';
 import { PublicInstallButton } from '../components/pwa/PublicInstallButton';
-import { Lock, Mail, User, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, User, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
@@ -28,6 +28,8 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -378,14 +380,23 @@ export const RegisterPage: React.FC = () => {
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
                       autoComplete="new-password"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6C5CE7] min-h-[44px]"
+                      className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6C5CE7] min-h-[44px]"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -398,14 +409,23 @@ export const RegisterPage: React.FC = () => {
                       <Lock className="w-4 h-4" />
                     </div>
                     <input
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••••••"
                       autoComplete="new-password"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6C5CE7] min-h-[44px]"
+                      className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6C5CE7] min-h-[44px]"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
+                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 

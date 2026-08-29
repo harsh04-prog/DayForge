@@ -396,9 +396,12 @@ app.add_middleware(
 )
 
 # Mount Uploads directory for static avatar serving
-app.mount("/api/v1/uploads", StaticFiles(directory=settings.UPLOAD_PATH), name="uploads")
+os.makedirs(str(settings.UPLOAD_PATH), exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory=str(settings.UPLOAD_PATH)), name="uploads")
 
 from app.api.notifications import router as notifications_router
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 # Include Routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
@@ -408,6 +411,14 @@ app.include_router(analytics_router, prefix=settings.API_V1_STR)
 app.include_router(challenges_router, prefix=settings.API_V1_STR)
 app.include_router(settings_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Unhandled server error at {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Server error: {str(exc)}"}
+    )
 
 @app.get("/health")
 async def health_check():

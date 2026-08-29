@@ -6,7 +6,7 @@ import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { DayForgeLogo } from '../components/common/DayForgeLogo';
 import { PublicInstallButton } from '../components/pwa/PublicInstallButton';
-import { Lock, Mail, ArrowRight } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -15,6 +15,7 @@ export const LoginPage: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -109,14 +110,23 @@ export const LoginPage: React.FC = () => {
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   autoComplete="current-password"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20 transition-all min-h-[44px]"
+                  className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20 transition-all min-h-[44px]"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition-colors focus:outline-none"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
