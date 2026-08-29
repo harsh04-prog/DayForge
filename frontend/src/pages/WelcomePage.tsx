@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Flame, Trophy, ArrowRight, Zap } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { DayForgeLogo } from '../components/common/DayForgeLogo';
+import { PublicInstallButton } from '../components/pwa/PublicInstallButton';
 
 export const WelcomePage: React.FC = () => {
   const featureCards = [
@@ -38,6 +39,9 @@ export const WelcomePage: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Public PWA Install Button */}
+          <PublicInstallButton variant="header" size="sm" className="hidden sm:inline-flex" />
+
           <Link to="/login">
             <Button variant="ghost" size="sm" className="font-bold text-slate-700 min-h-[40px]">
               Sign In
@@ -100,40 +104,48 @@ export const WelcomePage: React.FC = () => {
                 Start Forging Free
               </Button>
             </Link>
-            <Link to="/login" className="w-full sm:w-auto">
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full sm:w-auto px-8 font-bold rounded-2xl text-base min-h-[48px]"
-              >
-                Sign In
-              </Button>
-            </Link>
+
+            {/* Install App Button in Hero */}
+            <PublicInstallButton
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto px-6 font-black rounded-2xl min-h-[48px]"
+            />
           </div>
         </motion.div>
 
         {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-12 sm:mt-16 text-left w-full relative z-10">
-          {featureCards.map((feat, i) => (
-            <div
-              key={i}
-              className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-soft transition-all hover:border-[#6C5CE7]/40 hover:-translate-y-0.5"
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-12 sm:mt-16 w-full text-left">
+          {featureCards.map((f, i) => (
+            <motion.div
+              key={f.title}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * i, duration: 0.3 }}
+              className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-soft hover:shadow-soft-lg hover:border-[#6C5CE7]/40 transition-all group"
             >
-              <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center mb-3">
-                {feat.icon}
+              <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform shadow-xs">
+                {f.icon}
               </div>
-              <h3 className="font-bold text-sm text-slate-900 mb-1">{feat.title}</h3>
-              <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                {feat.description}
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">
+                {f.title}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-1 leading-snug">
+                {f.description}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="py-6 border-t border-slate-200/80 text-center text-xs font-semibold text-slate-400">
-        <p>© {new Date().getFullYear()} DayForge. Build habits. Level yourself.</p>
+      <footer className="border-t border-slate-200/80 py-6 text-center text-xs text-slate-500 font-semibold max-w-7xl mx-auto w-full px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p>© 2026 DayForge. Build habits. Level yourself.</p>
+        <div className="flex items-center gap-4">
+          <PublicInstallButton variant="ghost" size="sm" />
+          <Link to="/login" className="hover:text-[#6C5CE7] transition-colors">Sign In</Link>
+          <Link to="/register" className="hover:text-[#6C5CE7] transition-colors">Create Account</Link>
+        </div>
       </footer>
     </div>
   );

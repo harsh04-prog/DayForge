@@ -14,6 +14,10 @@ import { ChallengesPage } from './pages/ChallengesPage';
 import { WeeklyReviewPage } from './pages/WeeklyReviewPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useAuth } from './context/AuthContext';
+import { InstallGuideModal } from './components/pwa/InstallGuideModal';
+import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
+import { PWAUpdateToast } from './components/pwa/PWAUpdateToast';
+import { OfflineIndicator } from './components/pwa/OfflineIndicator';
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -21,8 +25,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-        <div className="w-8 h-8 rounded-xl bg-indigo-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FC]">
+        <div className="w-10 h-10 rounded-2xl bg-[#6C5CE7] animate-spin" />
       </div>
     );
   }
@@ -51,63 +55,75 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 export const App: React.FC = () => {
   return (
-    <Routes>
-      {/* Public Pages */}
-      <Route
-        path="/welcome"
-        element={
-          <PublicRoute>
-            <WelcomePage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
+    <>
+      {/* Global Offline Status */}
+      <OfflineIndicator />
 
-      {/* Onboarding */}
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute>
-            <OnboardingPage />
-          </ProtectedRoute>
-        }
-      />
+      {/* Global PWA Update Toast */}
+      <PWAUpdateToast />
 
-      {/* Authenticated Application Layout */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/habits" element={<HabitsPage />} />
-        <Route path="/habits/:id" element={<HabitDetailPage />} />
-        <Route path="/progress" element={<ProgressPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/challenges" element={<ChallengesPage />} />
-        <Route path="/weekly-review" element={<WeeklyReviewPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Route>
+      <Routes>
+        {/* Public Pages */}
+        <Route
+          path="/welcome"
+          element={
+            <PublicRoute>
+              <WelcomePage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Onboarding */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Authenticated Application Layout */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/habits" element={<HabitsPage />} />
+          <Route path="/habits/:id" element={<HabitDetailPage />} />
+          <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/challenges" element={<ChallengesPage />} />
+          <Route path="/weekly-review" element={<WeeklyReviewPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {/* Global PWA Install Banner & Install Guide Modal */}
+      <PWAInstallBanner />
+      <InstallGuideModal />
+    </>
   );
 };

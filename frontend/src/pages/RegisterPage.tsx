@@ -7,6 +7,7 @@ import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { DayForgeLogo } from '../components/common/DayForgeLogo';
 import { AvatarSelector } from '../components/common/AvatarSelector';
+import { PublicInstallButton } from '../components/pwa/PublicInstallButton';
 import { Lock, Mail, User, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
@@ -101,7 +102,14 @@ export const RegisterPage: React.FC = () => {
       showSuccess('Account Created!', 'Welcome to DayForge. Let’s configure your habit goals.');
       navigate('/onboarding');
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Failed to create account. Please try again.';
+      let msg = 'Failed to create account. Please try again.';
+      if (typeof err.response?.data?.detail === 'string') {
+        msg = err.response.data.detail;
+      } else if (Array.isArray(err.response?.data?.detail) && err.response.data.detail.length > 0) {
+        msg = err.response.data.detail[0].msg || err.response.data.detail[0].message || 'Invalid registration details.';
+      } else if (err.message) {
+        msg = err.message;
+      }
       setErrorMsg(msg);
       showError('Registration Error', msg);
     } finally {
@@ -110,12 +118,14 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] text-slate-900 flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8">
-      {/* Top Header & DayForge Official Logo */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md flex items-center justify-center mb-5">
+    <div className="min-h-screen bg-[#F8F9FC] text-slate-900 flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8 relative">
+      {/* Top Floating Action Bar with PWA Install Button */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md flex items-center justify-between mb-5 px-1">
         <Link to="/welcome" className="inline-block group">
-          <DayForgeLogo size="lg" />
+          <DayForgeLogo size="md" />
         </Link>
+
+        <PublicInstallButton variant="header" size="sm" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-5">

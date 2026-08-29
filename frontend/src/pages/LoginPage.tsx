@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { DayForgeLogo } from '../components/common/DayForgeLogo';
+import { PublicInstallButton } from '../components/pwa/PublicInstallButton';
 import { Lock, Mail, ArrowRight } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
@@ -33,7 +34,14 @@ export const LoginPage: React.FC = () => {
       showSuccess('Welcome back!', 'Session authenticated successfully.');
       navigate('/');
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Incorrect email or password. Please check your credentials.';
+      let msg = 'Incorrect email or password. Please check your credentials.';
+      if (typeof err.response?.data?.detail === 'string') {
+        msg = err.response.data.detail;
+      } else if (Array.isArray(err.response?.data?.detail) && err.response.data.detail.length > 0) {
+        msg = err.response.data.detail[0].msg || err.response.data.detail[0].message || 'Invalid login details.';
+      } else if (err.message) {
+        msg = err.message;
+      }
       setErrorMsg(msg);
       showError('Authentication Failed', msg);
     } finally {
@@ -42,12 +50,14 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FC] text-slate-900 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-      {/* Top Header with DayForge Official Logo */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md flex items-center justify-center mb-6">
+    <div className="min-h-screen bg-[#F8F9FC] text-slate-900 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative">
+      {/* Top Header with DayForge Official Logo & PWA Install Button */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md flex items-center justify-between mb-6 px-1">
         <Link to="/welcome" className="inline-block group">
-          <DayForgeLogo size="lg" />
+          <DayForgeLogo size="md" />
         </Link>
+
+        <PublicInstallButton variant="header" size="sm" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
