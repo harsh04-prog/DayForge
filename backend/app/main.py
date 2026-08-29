@@ -412,12 +412,16 @@ app.include_router(challenges_router, prefix=settings.API_V1_STR)
 app.include_router(settings_router, prefix=settings.API_V1_STR)
 app.include_router(notifications_router, prefix=settings.API_V1_STR)
 
+import sys
+import traceback
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    print(f"Unhandled server error at {request.url.path}: {exc}")
+    error_trace = traceback.format_exc()
+    print(f"CRITICAL ERROR on {request.method} {request.url.path}:\n{error_trace}", file=sys.stderr)
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Server error: {str(exc)}"}
+        content={"detail": "Internal server error occurred. Please try again."}
     )
 
 @app.get("/health")

@@ -112,34 +112,45 @@ async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)):
-    query = (
-        select(User)
-        .options(selectinload(User.profile), selectinload(User.settings))
-        .where(User.email == payload.email.lower())
-    )
-    result = await db.execute(query)
-    user = result.scalar_one_or_none()
-
-    if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password. Please try again."
+    try:
+        query = (
+            select(User)
+            .options(selectinload(User.profile), selectinload(User.settings))
+            .where(User.email == payload.email.lower())
         )
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This account has been disabled."
+        if not user or not verify_password(payload.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password. Please try again."
+            )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This account has been disabled."
+            )
+
+        expires_delta = datetime.timedelta(days=30) if payload.remember_me else datetime.timedelta(days=7)
+        access_token = create_access_token(subject=str(user.id), expires_delta=expires_delta)
+
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserOut.model_validate(user)
         )
-
-    expires_delta = datetime.timedelta(days=30) if payload.remember_me else datetime.timedelta(days=7)
-    access_token = create_access_token(subject=str(user.id), expires_delta=expires_delta)
-
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=UserOut.model_validate(user)
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import sys, traceback
+        error_trace = traceback.format_exc()
+        print(f"Error during login on backend:\n{error_trace}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to authenticate on the server. Please try again."
+        )
 
 @router.get("/session", response_model=UserOut)
 async def get_session(current_user: User = Depends(get_current_user)):
