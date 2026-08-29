@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050/api/v1';
+// In production on Vercel, requests to /api/v1 are routed automatically by vercel.json rewrites.
+// In local dev, Vite proxy forwards /api to http://127.0.0.1:5050.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -37,6 +39,6 @@ api.interceptors.response.use(
 
 export const getAvatarFullUrl = (avatarUrl?: string | null) => {
   if (!avatarUrl) return null;
-  if (avatarUrl.startsWith('http')) return avatarUrl;
-  return `http://127.0.0.1:5050${avatarUrl}`;
+  if (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:') || avatarUrl.startsWith('/')) return avatarUrl;
+  return `/api/v1/uploads/${avatarUrl}`;
 };
