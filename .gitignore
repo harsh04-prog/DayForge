@@ -1,3 +1,8 @@
+# Next.js build & cache
+.next/
+out/
+data/
+
 # Dependencies
 node_modules/
 .pnp
@@ -20,45 +25,24 @@ build/
 # Python & Virtual Environments
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.venv/
+*.venv/
 venv/
 env/
-ENV/
 
-# Testing & Caches
+# Testing & Logs
+test_*.js
+*.log
 .pytest_cache/
 .coverage
-htmlcov/
-.oxlint-cache/
 
-# Local SQLite databases
+# Local Databases & Files
 *.db
 *.sqlite
 *.sqlite3
 dayforge.db
 
-# OS & Editor files
+# OS & Editors
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
-*.swp
-*.swo
