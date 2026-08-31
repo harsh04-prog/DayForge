@@ -19,9 +19,13 @@ export async function GET(request: Request) {
   const enrichedHabits = rawHabits.map((h) => {
     const todayLog = db.getLogByHabitAndDate(h.id, today);
     const isCompleted = Boolean(todayLog?.completed);
+    const habitName = h.name || h.title || 'Daily Habit';
     return {
       ...h,
+      title: habitName,
+      name: habitName,
       today_completed: isCompleted,
+      today_progress: isCompleted ? (h.target_value || 1) : 0,
       today_log: todayLog || null,
       completed_today: isCompleted,
     };

@@ -58,6 +58,7 @@ export interface HabitRecord {
   id: number;
   user_id: number;
   title: string;
+  name?: string;
   description?: string | null;
   category: string;
   color: string;
@@ -67,8 +68,11 @@ export interface HabitRecord {
   target_days_per_week?: number | null;
   target_value: number;
   target_unit: string;
+  unit?: string;
   target_type: string;
+  habit_type?: 'binary' | 'quantitative' | string;
   time_of_day: string;
+  preferred_time?: string;
   reminder_time?: string | null;
   reminder_enabled: boolean;
   is_active: boolean;
@@ -533,23 +537,78 @@ export const db = {
   },
 
   // Habits
-  getHabitsByUserId(userId: number, includeArchived = false): HabitRecord[] {
+  getHabitsByUserId(userId: number, includeArchived = false): any[] {
     const data = loadDB();
-    return data.habits.filter(
-      (h) => h.user_id === userId && (includeArchived ? true : !h.is_archived)
-    );
+    return data.habits
+      .filter((h) => h.user_id === userId && (includeArchived ? true : !h.is_archived))
+      .map((h) => {
+        const habitTitle = h.title || (h as any).name || 'Daily Habit';
+        return {
+          ...h,
+          title: habitTitle,
+          name: habitTitle,
+          preferred_time: h.preferred_time || h.time_of_day || 'morning',
+          time_of_day: h.time_of_day || h.preferred_time || 'morning',
+          target_value: h.target_value || 1,
+          target_unit: h.target_unit || (h as any).unit || 'times',
+          unit: h.target_unit || (h as any).unit || 'times',
+          habit_type: h.habit_type || 'binary',
+          category: h.category || 'health',
+          color: h.color || '#6C5CE7',
+          icon: h.icon || 'activity',
+          difficulty: h.difficulty || 'medium',
+          current_streak: h.current_streak || 0,
+          longest_streak: h.longest_streak || 0,
+          total_completions: h.total_completions || 0,
+          is_active: true,
+          is_archived: false,
+        };
+      });
   },
-  getHabitById(id: number): HabitRecord | undefined {
+  getHabitById(id: number): any | undefined {
     const data = loadDB();
-    return data.habits.find((h) => h.id === id);
+    const h = data.habits.find((hab) => hab.id === id);
+    if (!h) return undefined;
+    const habitTitle = h.title || (h as any).name || 'Daily Habit';
+    return {
+      ...h,
+      title: habitTitle,
+      name: habitTitle,
+      preferred_time: h.preferred_time || h.time_of_day || 'morning',
+      time_of_day: h.time_of_day || h.preferred_time || 'morning',
+      target_value: h.target_value || 1,
+      target_unit: h.target_unit || (h as any).unit || 'times',
+      unit: h.target_unit || (h as any).unit || 'times',
+    };
   },
-  createHabit(habit: Omit<HabitRecord, 'id' | 'created_at' | 'updated_at'>): HabitRecord {
+  createHabit(habit: any): HabitRecord {
     const data = loadDB();
     const id = data.habits.length > 0 ? Math.max(...data.habits.map((h) => h.id)) + 1 : 1;
     const now = new Date().toISOString();
+    const habitTitle = habit.title || habit.name || 'Daily Habit';
     const newRecord: HabitRecord = {
       ...habit,
       id,
+      title: habitTitle,
+      name: habitTitle,
+      preferred_time: habit.preferred_time || habit.time_of_day || 'morning',
+      time_of_day: habit.time_of_day || habit.preferred_time || 'morning',
+      target_value: habit.target_value || 1,
+      target_unit: habit.target_unit || habit.unit || 'times',
+      target_type: habit.target_type || 'boolean',
+      category: habit.category || 'health',
+      color: habit.color || '#6C5CE7',
+      icon: habit.icon || 'activity',
+      frequency_type: habit.frequency_type || 'daily',
+      reminder_enabled: Boolean(habit.reminder_enabled),
+      is_active: true,
+      is_archived: false,
+      sort_order: habit.sort_order ?? data.habits.length,
+      current_streak: 0,
+      longest_streak: 0,
+      total_completions: 0,
+      xp_per_completion: habit.xp_per_completion || 15,
+      difficulty: habit.difficulty || 'medium',
       created_at: now,
       updated_at: now,
     };

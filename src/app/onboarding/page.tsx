@@ -21,6 +21,7 @@ import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { DayForgeLogo } from '@/components/common/DayForgeLogo';
 import { useAuth } from '@/context/AuthContext';
+import { useHabits } from '@/context/HabitContext';
 import { useToast } from '@/context/ToastContext';
 
 const FOCUS_AREAS = [
@@ -63,6 +64,7 @@ const STARTER_HABITS_CATALOG: Record<string, any[]> = {
 
 export default function OnboardingPage() {
   const { completeOnboarding } = useAuth();
+  const { fetchDashboard } = useHabits();
   const { showSuccess } = useToast();
   const router = useRouter();
 
@@ -109,6 +111,10 @@ export default function OnboardingPage() {
   const handleFinishOnboarding = async () => {
     setIsLoading(true);
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('dayforge_dashboard_cache');
+      }
+
       await completeOnboarding({
         focus_areas: selectedFocus,
         primary_goal: primaryGoal.trim() || 'Level myself up with consistent daily discipline.',
@@ -116,6 +122,7 @@ export default function OnboardingPage() {
         starter_habits: selectedHabits,
       });
 
+      await fetchDashboard();
       showSuccess('Onboarding Complete!', 'Your daily dashboard is forged and ready.');
       router.push('/');
     } catch {

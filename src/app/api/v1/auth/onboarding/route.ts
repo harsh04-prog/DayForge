@@ -24,9 +24,11 @@ export async function POST(request: Request) {
     // Create starter habits if provided
     if (Array.isArray(starter_habits) && starter_habits.length > 0) {
       starter_habits.forEach((sh: any, index: number) => {
+        const habitTitle = sh.name || sh.title || 'Daily Routine';
         db.createHabit({
           user_id: userId,
-          title: sh.title || 'Morning Habit',
+          title: habitTitle,
+          name: habitTitle,
           description: sh.description || null,
           category: sh.category || 'health',
           color: sh.color || '#6C5CE7',
@@ -37,7 +39,8 @@ export async function POST(request: Request) {
           target_value: sh.target_value || 1,
           target_unit: sh.target_unit || 'times',
           target_type: sh.target_type || 'boolean',
-          time_of_day: sh.time_of_day || 'morning',
+          time_of_day: sh.preferred_time || sh.time_of_day || 'morning',
+          preferred_time: sh.preferred_time || sh.time_of_day || 'morning',
           reminder_time: sh.reminder_time || null,
           reminder_enabled: Boolean(sh.reminder_enabled),
           is_active: true,
