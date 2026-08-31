@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const userId = getUserIdFromRequest(request);
   if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
 
-  const logs = db.getLogsByUserId(userId).filter((l) => l.completed);
+  const logs = db.getHabitLogs(userId).filter((l) => l.completed);
   const stats = db.recalculateUserStats(userId);
 
   // Generate 365 days

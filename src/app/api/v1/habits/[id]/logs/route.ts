@@ -26,10 +26,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let xpEarned = 0;
     if (isCompleted) {
       xpEarned = habit.xp_per_completion || 15;
-      db.addXP(userId, xpEarned, 'habit_completion', habitId, `Completed ${habit.title}`);
+      db.addXp(userId, xpEarned, 'habit_completion', habitId, `Completed ${habit.title}`);
     }
 
-    const logRecord = db.saveHabitLog({
+    const logRecord = db.createHabitLog({
       habit_id: habitId,
       user_id: userId,
       date: logDate,
@@ -49,6 +49,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
   } catch (error: any) {
     console.error('Save habit log error:', error);
-    return NextResponse.json({ detail: 'Failed to record habit progress.' }, { status: 500 });
+    return NextResponse.json({ detail: error.message || 'Failed to record habit progress.' }, { status: 500 });
   }
 }

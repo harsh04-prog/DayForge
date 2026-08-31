@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../common/Card';
 import { ProgressRing } from '../common/ProgressRing';
 import { Avatar } from '../common/Avatar';
@@ -14,6 +14,14 @@ interface TodayProgressCardProps {
 
 export const TodayProgressCard: React.FC<TodayProgressCardProps> = ({ data }) => {
   const { user, profile } = useAuth();
+  const [formattedDate, setFormattedDate] = useState<string>('');
+
+  useEffect(() => {
+    setFormattedDate(
+      new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    );
+  }, []);
+
   const completed = data?.today_completed_count ?? 0;
   const scheduled = data?.today_scheduled_count ?? 0;
   const percentage = data?.today_completion_rate ?? 0;
@@ -47,9 +55,11 @@ export const TodayProgressCard: React.FC<TodayProgressCardProps> = ({ data }) =>
                 <span className="text-[10px] font-black uppercase tracking-widest text-[#6C5CE7] bg-[#6C5CE7]/10 border border-[#6C5CE7]/25 px-2.5 py-0.5 rounded-full">
                   Today's Progress
                 </span>
-                <span className="text-xs font-semibold text-slate-500">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                </span>
+                {formattedDate && (
+                  <span className="text-xs font-semibold text-slate-500">
+                    {formattedDate}
+                  </span>
+                )}
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
                 {completed} of {scheduled} completed

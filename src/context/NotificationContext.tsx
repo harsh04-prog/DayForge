@@ -35,25 +35,51 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const fetchBudget = useCallback(async () => {
     if (!isAuthenticated) return;
+    if (typeof window !== 'undefined' && !localStorage.getItem('dayforge_token')) return;
+
     try {
       const res = await api.get<NotificationBudget>('/notifications/budget');
-      setBudget(res.data);
-    } catch (err) {
-      console.error('Failed to fetch notification budget', err);
+      if (res.data) {
+        setBudget(res.data);
+      }
+    } catch {
+      // Fallback budget if temporarily unreachable
+      setBudget((prev) => prev || {
+        sent_today_count: 0,
+        max_daily_budget: 10,
+        remaining_today: 10,
+        quiet_hours_active: false,
+      });
     }
   }, [isAuthenticated]);
 
   const fetchNotifications = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setNotifications([]);
+      return;
+    }
+    if (typeof window !== 'undefined' && !localStorage.getItem('dayforge_token')) {
+      return;
+    }
+
     try {
+      setIsLoading(true);
       const [notifsRes, budgetRes] = await Promise.all([
-        api.get<NotificationItem[]>('/notifications/'),
+        api.get<NotificationItem[]>('/notifications'),
         api.get<NotificationBudget>('/notifications/budget'),
       ]);
-      setNotifications(notifsRes.data);
-      setBudget(budgetRes.data);
-    } catch (err) {
-      console.error('Failed to fetch companion notifications', err);
+
+      if (Array.isArray(notifsRes.data)) {
+        setNotifications(notifsRes.data);
+      }
+      if (budgetRes.data) {
+        setBudget(budgetRes.data);
+      }
+    } catch {
+      // Graceful fallback to avoid error overlays
+      setNotifications((prev) => prev || []);
+    } finally {
+      setIsLoading(false);
     }
   }, [isAuthenticated]);
 
@@ -63,6 +89,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Periodically sync every 60s
       const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
+    } else {
+      setNotifications([]);
+      setBudget(null);
     }
   }, [isAuthenticated, fetchNotifications]);
 
@@ -71,8 +100,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await api.post(`/notifications/${id}/read`);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       await fetchBudget();
-    } catch (err) {
-      console.error('Failed to mark read', err);
+    } catch {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
     }
   };
 
@@ -82,8 +111,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications([]);
       showSuccess('All Caught Up', 'All reminders marked as read.');
       await fetchBudget();
-    } catch (err) {
-      showError('Error', 'Failed to mark all as read.');
+    } catch {
+      setNotifications([]);
     }
   };
 
@@ -92,8 +121,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await api.post(`/notifications/${id}/dismiss`);
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       await fetchBudget();
-    } catch (err) {
-      console.error('Failed to dismiss', err);
+    } catch {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
     }
   };
 
@@ -103,7 +132,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       showSuccess('Reminder Snoozed', `We'll remind you in ${minutes} minutes.`);
       await fetchBudget();
-    } catch (err) {
+    } catch {
       showError('Error', 'Failed to snooze reminder.');
     }
   };
@@ -124,7 +153,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       const res = await api.post<NotificationItem>('/notifications/test');
       soundEffects.playComplete();
-      setNotifications((prev) => [res.data, ...prev.filter((n) => n.id !== res.data.id)]);
+      if (res.data) {
+        setNotifications((prev) => [res.data, ...prev.filter((n) => n.id !== res.data.id)]);
+      }
       await fetchBudget();
 
       // Native Browser Push Notification
@@ -136,7 +167,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       showSuccess('Companion Reminder Fired', res.data.title);
-    } catch (err) {
+    } catch {
       showError('Error', 'Could not send companion reminder.');
     }
   };

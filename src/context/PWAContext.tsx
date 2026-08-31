@@ -24,19 +24,21 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true); // Deterministic SSR default
+  const [isIOS, setIsIOS] = useState(false);
   const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isInstallGuideOpen, setIsInstallGuideOpen] = useState(false);
 
-  // Check if iOS
-  const isIOS =
-    typeof window !== 'undefined' &&
-    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
-    !(window as any).MSStream;
-
   useEffect(() => {
+    // Detect online status on client mount
+    if (typeof navigator !== 'undefined') {
+      setIsOnline(navigator.onLine !== false);
+      const iosDetected = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      setIsIOS(iosDetected);
+    }
+
     // 1. Check if already installed / standalone mode
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||

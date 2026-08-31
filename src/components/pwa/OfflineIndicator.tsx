@@ -1,14 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePWA } from '../../context/PWAContext';
 import { WifiOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const OfflineIndicator: React.FC = () => {
   const { isOnline } = usePWA();
+  const [mounted, setMounted] = useState(false);
 
-  if (isOnline) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || isOnline) return null;
 
   return (
     <AnimatePresence>
@@ -24,4 +29,3 @@ export const OfflineIndicator: React.FC = () => {
     </AnimatePresence>
   );
 };
-

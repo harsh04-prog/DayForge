@@ -53,6 +53,7 @@ export interface Habit {
   id: number;
   user_id: number;
   name: string;
+  title?: string;
   description?: string | null;
   icon: string;
   color: string;
@@ -64,6 +65,7 @@ export interface Habit {
   frequency_days: string;
   target_days_per_week: number;
   preferred_time: 'morning' | 'afternoon' | 'evening' | 'anytime';
+  time_of_day?: 'morning' | 'afternoon' | 'evening' | 'anytime';
   reminder_time?: string | null;
   difficulty: 'easy' | 'medium' | 'hard';
   is_paused: boolean;
@@ -265,6 +267,11 @@ export interface Challenge {
   member_count?: number;
   participants_count?: number;
   status?: string;
+  is_strict?: boolean;
+  rule_description?: string;
+  started_date?: string;
+  end_date?: string;
+  remaining_days?: number;
 }
 
 export interface NotificationBudget {

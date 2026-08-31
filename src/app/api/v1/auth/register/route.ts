@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create user
+    // Create user (auto-creates profile and user_settings)
     const newUser = db.createUser({
       email: email.trim().toLowerCase(),
       username: username.trim().toLowerCase(),
@@ -51,45 +51,12 @@ export async function POST(request: Request) {
       is_onboarded: false,
     });
 
-    // Create profile
-    const profile = db.createProfile({
-      user_id: newUser.id,
-      avatar_url: avatar_url || null,
-      bio: null,
-      level: 1,
-      xp: 0,
-      current_streak: 0,
-      longest_streak: 0,
-      total_habits_completed: 0,
-      overall_consistency: 0,
-      available_shields: 2,
-      primary_goal: null,
-      focus_areas: null,
-    });
+    if (avatar_url) {
+      db.updateProfile(newUser.id, { avatar_url });
+    }
 
-    // Create user settings
-    const settings = db.createSettings({
-      user_id: newUser.id,
-      habit_reminders: true,
-      streak_reminders: true,
-      wellness_reminders: true,
-      progress_reminders: true,
-      motivational_messages: true,
-      weekly_review: true,
-      challenge_notifications: true,
-      max_daily_reminders: 12,
-      sound_enabled: true,
-      sound_type: 'soft',
-      quiet_hours_enabled: true,
-      quiet_hours_start: '23:00',
-      quiet_hours_end: '07:00',
-      theme: 'light',
-      week_start_day: 'monday',
-      time_format: '12h',
-      preferred_units: 'metric',
-      profile_visibility: 'private',
-    });
-
+    const profile = db.getProfileByUserId(newUser.id);
+    const settings = db.getSettingsByUserId(newUser.id);
     const accessToken = createAccessToken(newUser.id);
 
     return NextResponse.json({
@@ -110,7 +77,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Registration API error:', error);
     return NextResponse.json(
-      { detail: 'Server registration error. Please try again.' },
+      { detail: error.message || 'Server registration error. Please try again.' },
       { status: 500 }
     );
   }

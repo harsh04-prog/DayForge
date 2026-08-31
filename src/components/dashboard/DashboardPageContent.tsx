@@ -6,6 +6,7 @@ import { useHabits } from '@/context/HabitContext';
 import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { DailyScoreCard } from '@/components/dashboard/DailyScoreCard';
 import { TodayHabitCard } from '@/components/dashboard/TodayHabitCard';
+import { InteractiveActivityCalendar } from '@/components/dashboard/InteractiveActivityCalendar';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { HabitModal } from '@/components/habits/HabitModal';
@@ -18,30 +19,29 @@ export const DashboardPageContent: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'completed'>('all');
   const [isNewHabitOpen, setIsNewHabitOpen] = useState(false);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
+  const [greeting, setGreeting] = useState<string>('Welcome back');
 
   useEffect(() => {
     fetchDashboard();
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
   }, [fetchDashboard]);
 
-  // Greeting based on hour
-  const currentHour = new Date().getHours();
-  const greeting = currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = user?.full_name?.split(' ')[0] || user?.username || 'Hero';
-
   const activeHabits = dashboardData?.habits || habits;
 
   // Filter habits for checklist
   const filteredHabits = activeHabits.filter((h) => {
     if (h.is_archived || h.is_paused) return false;
     if (filter === 'completed') return h.today_completed;
-    if (filter === 'morning') return h.preferred_time === 'morning';
-    if (filter === 'afternoon') return h.preferred_time === 'afternoon';
-    if (filter === 'evening') return h.preferred_time === 'evening';
+    if (filter === 'morning') return h.preferred_time === 'morning' || h.time_of_day === 'morning';
+    if (filter === 'afternoon') return h.preferred_time === 'afternoon' || h.time_of_day === 'afternoon';
+    if (filter === 'evening') return h.preferred_time === 'evening' || h.time_of_day === 'evening';
     return true;
   });
 
   return (
-    <div className="space-y-5 sm:space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* 1. Greeting & Primary Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="min-w-0 flex-1">
@@ -99,8 +99,8 @@ export const DashboardPageContent: React.FC = () => {
                 onClick={() => setFilter(tab)}
                 className={`px-3 py-1.5 rounded-xl capitalize transition-all whitespace-nowrap min-h-[32px] ${
                   filter === tab
-                    ? 'bg-[#6C5CE7] text-white shadow-xs font-black'
-                    : 'text-slate-500 hover:text-slate-900 active:bg-slate-200'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 {tab}
@@ -109,14 +109,14 @@ export const DashboardPageContent: React.FC = () => {
           </div>
         </div>
 
-        {/* Habit List: 1-col on mobile, 2-col on desktop */}
+        {/* Habit Checklist Cards */}
         {filteredHabits.length === 0 ? (
-          <Card className="bg-white border-dashed border-slate-200 text-center py-10 sm:py-12 space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#6C5CE7]/10 text-[#6C5CE7] flex items-center justify-center mx-auto">
+          <Card className="p-8 sm:p-10 text-center bg-white border border-slate-200/90 shadow-soft rounded-3xl space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-[#6C5CE7]/10 text-[#6C5CE7] flex items-center justify-center mx-auto shadow-xs">
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-black text-slate-900">
+              <h3 className="text-sm font-black text-slate-900">
                 {filter === 'completed'
                   ? 'No completed habits yet.'
                   : 'Your first habit starts your journey.'}
@@ -157,6 +157,9 @@ export const DashboardPageContent: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 4. Interactive Activity Calendar */}
+      <InteractiveActivityCalendar />
 
       {/* Habit Create / Edit Modal */}
       <HabitModal
