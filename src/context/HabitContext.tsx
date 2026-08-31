@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
 import { Habit, DashboardData, Achievement, LevelInfo } from '../types';
@@ -42,13 +42,37 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
   const [levelUpModal, setLevelUpModal] = useState<{ show: boolean; level: number; title: string } | null>(null);
   const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null);
+  const isFetchingRef = useRef(false);
+
+  // Initialize cached data for ultra-fast instant UI rendering
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isAuthenticated) {
+      try {
+        const cached = localStorage.getItem('dayforge_dashboard_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached) as DashboardData;
+          if (parsed && parsed.habits) {
+            setDashboardData(parsed);
+            setHabits(parsed.habits);
+          }
+        }
+      } catch {}
+    }
+  }, [isAuthenticated]);
 
   const fetchDashboard = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isFetchingRef.current) return;
     try {
+      isFetchingRef.current = true;
       const res = await api.get<DashboardData>('/progress/dashboard');
       setDashboardData(res.data);
-      setHabits(res.data.habits);
+      setHabits(res.data.habits || []);
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('dayforge_dashboard_cache', JSON.stringify(res.data));
+        } catch {}
+      }
 
       if (res.data.unseen_achievements && res.data.unseen_achievements.length > 0) {
         const firstUnseen = res.data.unseen_achievements[0];
@@ -57,6 +81,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Failed to fetch dashboard', err);
+    } finally {
+      isFetchingRef.current = false;
     }
   }, [isAuthenticated]);
 
@@ -117,7 +143,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const completeHabit = async (id: number, currentValue?: number, notes?: string) => {
-    // Optimistic UI update
+    // Optimistic UI update for instant feel
     setHabits((prev) =>
       prev.map((h) =>
         h.id === id
@@ -141,7 +167,6 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       const data = res.data;
-
       const targetHabit = habits.find((h) => h.id === id);
 
       // Check Level Up

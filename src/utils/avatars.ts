@@ -699,12 +699,30 @@ export const ALL_AVATARS: AvatarOption[] = [...MALE_AVATARS, ...FEMALE_AVATARS];
 
 export const getAvatarById = (id?: string | null): AvatarOption | undefined => {
   if (!id) return undefined;
-  return ALL_AVATARS.find((a) => a.id === id);
+  const clean = id.trim().toLowerCase();
+  
+  // Exact match
+  const exact = ALL_AVATARS.find((a) => a.id.toLowerCase() === clean);
+  if (exact) return exact;
+
+  // Partial / alias match (e.g. "male_1", "male_2", "female_1")
+  if (clean.includes('female') || clean.includes('f')) {
+    const num = parseInt(clean.replace(/\D/g, ''), 10) || 1;
+    const idx = Math.min(Math.max(0, num - 1), FEMALE_AVATARS.length - 1);
+    return FEMALE_AVATARS[idx];
+  } else {
+    const num = parseInt(clean.replace(/\D/g, ''), 10) || 1;
+    const idx = Math.min(Math.max(0, num - 1), MALE_AVATARS.length - 1);
+    return MALE_AVATARS[idx];
+  }
 };
 
-export const getAvatarSvgSrc = (idOrUrl?: string | null): string | null => {
-  if (!idOrUrl) return null;
+export const getAvatarSvgSrc = (idOrUrl?: string | null): string => {
+  if (!idOrUrl) return MALE_AVATARS[0].svg;
+  if (idOrUrl.startsWith('data:image') || idOrUrl.startsWith('http://') || idOrUrl.startsWith('https://')) {
+    return idOrUrl;
+  }
   const match = getAvatarById(idOrUrl);
-  if (match) return match.svg;
-  return idOrUrl;
+  return match ? match.svg : MALE_AVATARS[0].svg;
 };
+

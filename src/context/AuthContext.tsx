@@ -37,12 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedToken = localStorage.getItem('dayforge_token');
 
     try {
-      // Even if savedToken is null, cookies might carry dayforge_session
       const response = await api.get<User>('/auth/session');
       if (response.data && response.data.id) {
         setUser(response.data);
         if (!savedToken) {
-          // Token will be maintained via cookie or refreshed
           setToken('cookie_session');
         } else {
           setToken(savedToken);
@@ -59,7 +57,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(null);
         setUser(null);
       }
-      // If network error, don't immediately wipe if we have token
     } finally {
       setIsLoading(false);
     }
@@ -70,26 +67,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refreshSession]);
 
   const login = async (email: string, password: string, rememberMe: boolean = true): Promise<User> => {
-    const res = await api.post<{ access_token: string; user: User }>('/auth/login', {
-      email,
+    const cleanEmail = email.toLowerCase().trim();
+
+    // Check if client has local vault token for cross-container serverless recovery
+    let vaultToken: string | undefined;
+    if (typeof window !== 'undefined') {
+      try {
+        const storedRegistry = localStorage.getItem('dayforge_user_registry');
+        if (storedRegistry) {
+          const registry = JSON.parse(storedRegistry);
+          vaultToken = registry[cleanEmail]?.vault_token;
+        }
+      } catch {}
+    }
+
+    const res = await api.post<{ access_token: string; user: User; vault_token?: string }>('/auth/login', {
+      email: cleanEmail,
       password,
       remember_me: rememberMe,
+      vault_token: vaultToken,
     });
+
     const newToken = res.data.access_token;
     if (typeof window !== 'undefined') {
       localStorage.setItem('dayforge_token', newToken);
+
+      if (res.data.vault_token) {
+        try {
+          const storedRegistry = localStorage.getItem('dayforge_user_registry') || '{}';
+          const registry = JSON.parse(storedRegistry);
+          registry[cleanEmail] = {
+            id: res.data.user.id,
+            email: cleanEmail,
+            username: res.data.user.username,
+            full_name: res.data.user.full_name,
+            vault_token: res.data.vault_token,
+          };
+          localStorage.setItem('dayforge_user_registry', JSON.stringify(registry));
+        } catch {}
+      }
     }
+
     setToken(newToken);
     setUser(res.data.user);
     return res.data.user;
   };
 
   const register = async (payload: { email: string; username: string; full_name: string; password: string; avatar_url?: string }): Promise<User> => {
-    const res = await api.post<{ access_token: string; user: User }>('/auth/register', payload);
+    const cleanEmail = payload.email.toLowerCase().trim();
+
+    const res = await api.post<{ access_token: string; user: User; vault_token?: string }>('/auth/register', {
+      ...payload,
+      email: cleanEmail,
+    });
+
     const newToken = res.data.access_token;
     if (typeof window !== 'undefined') {
       localStorage.setItem('dayforge_token', newToken);
+
+      if (res.data.vault_token) {
+        try {
+          const storedRegistry = localStorage.getItem('dayforge_user_registry') || '{}';
+          const registry = JSON.parse(storedRegistry);
+          registry[cleanEmail] = {
+            id: res.data.user.id,
+            email: cleanEmail,
+            username: payload.username.toLowerCase().trim(),
+            full_name: payload.full_name,
+            vault_token: res.data.vault_token,
+          };
+          localStorage.setItem('dayforge_user_registry', JSON.stringify(registry));
+        } catch {}
+      }
     }
+
     setToken(newToken);
     setUser(res.data.user);
     return res.data.user;

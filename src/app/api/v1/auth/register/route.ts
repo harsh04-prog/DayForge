@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword, createAccessToken, setAuthCookies } from '@/lib/auth';
+import { hashPassword, createAccessToken, createVaultToken, setAuthCookies } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -61,9 +61,20 @@ export async function POST(request: Request) {
     const profile = db.getProfileByUserId(newUser.id);
     const settings = db.getSettingsByUserId(newUser.id);
     const accessToken = createAccessToken(newUser, '30d');
+    const vaultToken = createVaultToken({
+      id: newUser.id,
+      email: newUser.email,
+      username: newUser.username,
+      full_name: newUser.full_name,
+      hashed_password: newUser.hashed_password,
+      is_active: newUser.is_active,
+      is_onboarded: newUser.is_onboarded,
+      created_at: newUser.created_at,
+    });
 
     const res = NextResponse.json({
       access_token: accessToken,
+      vault_token: vaultToken,
       token_type: 'bearer',
       user: {
         id: newUser.id,
