@@ -13,7 +13,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<User>;
   register: (payload: { email: string; username: string; full_name: string; password: string; avatar_url?: string }) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateProfile: (data: { full_name?: string; username?: string; bio?: string; primary_goal?: string; focus_areas?: string; avatar_url?: string }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<string>;
   removeAvatar: () => Promise<void>;
@@ -28,13 +28,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedToken = localStorage.getItem('dayforge_token');
-      setToken(savedToken);
-    }
-  }, []);
-
   const refreshSession = useCallback(async () => {
     if (typeof window === 'undefined') {
       setIsLoading(false);
@@ -42,19 +35,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const savedToken = localStorage.getItem('dayforge_token');
-    if (!savedToken) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
 
     try {
+      // Even if savedToken is null, cookies might carry dayforge_session
       const response = await api.get<User>('/auth/session');
-      setUser(response.data);
-    } catch {
-      localStorage.removeItem('dayforge_token');
-      setToken(null);
-      setUser(null);
+      if (response.data && response.data.id) {
+        setUser(response.data);
+        if (!savedToken) {
+          // Token will be maintained via cookie or refreshed
+          setToken('cookie_session');
+        } else {
+          setToken(savedToken);
+        }
+      } else {
+        setUser(null);
+        setToken(null);
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('dayforge_token');
+        }
+        setToken(null);
+        setUser(null);
+      }
+      // If network error, don't immediately wipe if we have token
     } finally {
       setIsLoading(false);
     }
@@ -90,7 +95,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.data.user;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {}
     if (typeof window !== 'undefined') {
       localStorage.removeItem('dayforge_token');
     }
@@ -130,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         profile: user?.profile || null,
         settings: user?.settings || null,
         token,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated: !!user,
         isLoading,
         login,
         register,

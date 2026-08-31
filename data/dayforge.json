@@ -109,6 +109,16 @@
       "is_onboarded": false,
       "id": 11,
       "created_at": "2026-08-31T05:35:28.005Z"
+    },
+    {
+      "email": "hero_1788157072722@example.com",
+      "username": "hero_2722",
+      "full_name": "DayForge Hero",
+      "hashed_password": "$2a$10$oB2lO.G5wbtrBMXIgjv7XeyG0yYIt1iz5qZbQ/RLlrW5HvdRUdDKq",
+      "is_active": true,
+      "is_onboarded": false,
+      "id": 12,
+      "created_at": "2026-08-31T06:17:53.294Z"
     }
   ],
   "profiles": [
@@ -278,6 +288,21 @@
       "id": 11,
       "user_id": 11,
       "avatar_url": "male_2",
+      "bio": "Forging habits one day at a time.",
+      "level": 1,
+      "xp": 15,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "total_habits_completed": 1,
+      "overall_consistency": 3,
+      "available_shields": 2,
+      "primary_goal": "Build Daily Consistency",
+      "focus_areas": "Productivity, Health"
+    },
+    {
+      "id": 12,
+      "user_id": 12,
+      "avatar_url": "male_1",
       "bio": "Forging habits one day at a time.",
       "level": 1,
       "xp": 15,
@@ -514,6 +539,28 @@
     {
       "id": 11,
       "user_id": 11,
+      "habit_reminders": true,
+      "streak_reminders": true,
+      "wellness_reminders": true,
+      "progress_reminders": true,
+      "motivational_messages": true,
+      "weekly_review": true,
+      "challenge_notifications": true,
+      "max_daily_reminders": 10,
+      "sound_enabled": true,
+      "sound_type": "bell",
+      "quiet_hours_enabled": false,
+      "quiet_hours_start": "22:00",
+      "quiet_hours_end": "07:00",
+      "theme": "light",
+      "week_start_day": "monday",
+      "time_format": "12h",
+      "preferred_units": "metric",
+      "profile_visibility": "public"
+    },
+    {
+      "id": 12,
+      "user_id": 12,
       "habit_reminders": true,
       "streak_reminders": true,
       "wellness_reminders": true,
@@ -842,6 +889,34 @@
       "id": 11,
       "created_at": "2026-08-31T05:35:30.135Z",
       "updated_at": "2026-08-31T05:35:30.135Z"
+    },
+    {
+      "user_id": 12,
+      "title": "Deep Focus Morning Coding",
+      "description": null,
+      "category": "Productivity",
+      "color": "#6C5CE7",
+      "icon": "code",
+      "frequency_type": "daily",
+      "frequency_days": null,
+      "target_days_per_week": null,
+      "target_value": 60,
+      "target_unit": "min",
+      "target_type": "boolean",
+      "time_of_day": "morning",
+      "reminder_time": null,
+      "reminder_enabled": false,
+      "is_active": true,
+      "is_archived": false,
+      "sort_order": 0,
+      "current_streak": 1,
+      "longest_streak": 1,
+      "total_completions": 1,
+      "xp_per_completion": 15,
+      "difficulty": "hard",
+      "id": 12,
+      "created_at": "2026-08-31T06:17:54.922Z",
+      "updated_at": "2026-08-31T06:17:54.922Z"
     }
   ],
   "habit_logs": [
@@ -921,6 +996,17 @@
       "note": "Felt powerful!",
       "id": 7,
       "completed_at": "2026-08-31T05:35:30.704Z"
+    },
+    {
+      "habit_id": 12,
+      "user_id": 12,
+      "date": "2026-08-31",
+      "value": 60,
+      "completed": true,
+      "xp_earned": 15,
+      "note": "Crushed the focus block!",
+      "id": 8,
+      "completed_at": "2026-08-31T06:17:55.696Z"
     }
   ],
   "achievements": [
@@ -1041,6 +1127,15 @@
       "source_id": 11,
       "description": "Completed Morning Meditation & Pushups",
       "created_at": "2026-08-31T05:35:30.704Z"
+    },
+    {
+      "id": 9,
+      "user_id": 12,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 12,
+      "description": "Completed Deep Focus Morning Coding",
+      "created_at": "2026-08-31T06:17:55.695Z"
     }
   ],
   "notifications": [

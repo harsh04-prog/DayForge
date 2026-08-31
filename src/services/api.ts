@@ -4,6 +4,7 @@ const API_BASE_URL = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_AP
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -25,11 +26,18 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for 401 handling
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (typeof window !== 'undefined' && error.response?.status === 401) {
+    // Only handle 401 when the app is actively running on authenticated pages
+    if (
+      typeof window !== 'undefined' &&
+      error.response?.status === 401 &&
+      !error.config?.url?.includes('/auth/session') &&
+      !error.config?.url?.includes('/auth/login') &&
+      !error.config?.url?.includes('/auth/register')
+    ) {
       if (
         !window.location.pathname.startsWith('/login') &&
         !window.location.pathname.startsWith('/welcome') &&

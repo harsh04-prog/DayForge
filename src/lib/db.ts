@@ -302,6 +302,145 @@ export const db = {
     const data = loadDB();
     return data.users.find((u) => u.id === id);
   },
+
+  syncUserFromToken(tokenUser: { userId: number; email: string; username: string; full_name: string; is_active?: boolean; is_onboarded?: boolean }): UserRecord {
+    const data = loadDB();
+    let existing = data.users.find(
+      (u) => u.id === tokenUser.userId || u.email.toLowerCase() === tokenUser.email.toLowerCase()
+    );
+    if (existing) {
+      return existing;
+    }
+    const newUser: UserRecord = {
+      id: tokenUser.userId,
+      email: tokenUser.email.toLowerCase().trim(),
+      username: tokenUser.username.toLowerCase().trim() || `user_${tokenUser.userId}`,
+      full_name: tokenUser.full_name || 'Hero',
+      hashed_password: '',
+      is_active: tokenUser.is_active ?? true,
+      is_onboarded: tokenUser.is_onboarded ?? false,
+      created_at: new Date().toISOString(),
+    };
+    data.users.push(newUser);
+
+    if (!data.profiles.some((p) => p.user_id === tokenUser.userId)) {
+      data.profiles.push({
+        id: tokenUser.userId,
+        user_id: tokenUser.userId,
+        avatar_url: 'male_1',
+        bio: 'Forging habits one day at a time.',
+        level: 1,
+        xp: 0,
+        current_streak: 0,
+        longest_streak: 0,
+        total_habits_completed: 0,
+        overall_consistency: 0,
+        available_shields: 2,
+        primary_goal: 'Build Daily Consistency',
+        focus_areas: 'Productivity, Health',
+      });
+    }
+
+    if (!data.user_settings.some((s) => s.user_id === tokenUser.userId)) {
+      data.user_settings.push({
+        id: tokenUser.userId,
+        user_id: tokenUser.userId,
+        habit_reminders: true,
+        streak_reminders: true,
+        wellness_reminders: true,
+        progress_reminders: true,
+        motivational_messages: true,
+        weekly_review: true,
+        challenge_notifications: true,
+        max_daily_reminders: 10,
+        sound_enabled: true,
+        sound_type: 'bell',
+        quiet_hours_enabled: false,
+        quiet_hours_start: '22:00',
+        quiet_hours_end: '07:00',
+        theme: 'light',
+        week_start_day: 'monday',
+        time_format: '12h',
+        preferred_units: 'metric',
+        profile_visibility: 'public',
+      });
+    }
+
+    saveDB(data);
+    return newUser;
+  },
+
+  syncUserFromVault(vault: { id: number; email: string; username: string; full_name: string; hashed_password: string; is_active?: boolean; is_onboarded?: boolean; created_at?: string }): UserRecord {
+    const data = loadDB();
+    let existing = data.users.find(
+      (u) => u.id === vault.id || u.email.toLowerCase() === vault.email.toLowerCase()
+    );
+    if (existing) {
+      if (vault.hashed_password && (!existing.hashed_password || existing.hashed_password.length < 5)) {
+        existing.hashed_password = vault.hashed_password;
+        saveDB(data);
+      }
+      return existing;
+    }
+
+    const newUser: UserRecord = {
+      id: vault.id,
+      email: vault.email.toLowerCase().trim(),
+      username: vault.username.toLowerCase().trim() || `user_${vault.id}`,
+      full_name: vault.full_name || 'Hero',
+      hashed_password: vault.hashed_password,
+      is_active: vault.is_active ?? true,
+      is_onboarded: vault.is_onboarded ?? false,
+      created_at: vault.created_at || new Date().toISOString(),
+    };
+    data.users.push(newUser);
+
+    if (!data.profiles.some((p) => p.user_id === vault.id)) {
+      data.profiles.push({
+        id: vault.id,
+        user_id: vault.id,
+        avatar_url: 'male_1',
+        bio: 'Forging habits one day at a time.',
+        level: 1,
+        xp: 0,
+        current_streak: 0,
+        longest_streak: 0,
+        total_habits_completed: 0,
+        overall_consistency: 0,
+        available_shields: 2,
+        primary_goal: 'Build Daily Consistency',
+        focus_areas: 'Productivity, Health',
+      });
+    }
+
+    if (!data.user_settings.some((s) => s.user_id === vault.id)) {
+      data.user_settings.push({
+        id: vault.id,
+        user_id: vault.id,
+        habit_reminders: true,
+        streak_reminders: true,
+        wellness_reminders: true,
+        progress_reminders: true,
+        motivational_messages: true,
+        weekly_review: true,
+        challenge_notifications: true,
+        max_daily_reminders: 10,
+        sound_enabled: true,
+        sound_type: 'bell',
+        quiet_hours_enabled: false,
+        quiet_hours_start: '22:00',
+        quiet_hours_end: '07:00',
+        theme: 'light',
+        week_start_day: 'monday',
+        time_format: '12h',
+        preferred_units: 'metric',
+        profile_visibility: 'public',
+      });
+    }
+
+    saveDB(data);
+    return newUser;
+  },
   createUser(user: Omit<UserRecord, 'id' | 'created_at'>): UserRecord {
     const data = loadDB();
     const id = data.users.length > 0 ? Math.max(...data.users.map((u) => u.id)) + 1 : 1;

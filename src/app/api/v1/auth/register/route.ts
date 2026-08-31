@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword, createAccessToken } from '@/lib/auth';
+import { hashPassword, createAccessToken, setAuthCookies } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -21,8 +21,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim().toLowerCase();
+
     // Check email uniqueness
-    const existingEmail = db.getUserByEmail(email);
+    const existingEmail = db.getUserByEmail(cleanEmail);
     if (existingEmail) {
       return NextResponse.json(
         { detail: 'An account with this email already exists.' },
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     // Check username uniqueness
-    const existingUsername = db.getUserByUsername(username);
+    const existingUsername = db.getUserByUsername(cleanUsername);
     if (existingUsername) {
       return NextResponse.json(
         { detail: 'This username is already taken. Please choose another.' },
@@ -43,8 +46,8 @@ export async function POST(request: Request) {
 
     // Create user (auto-creates profile and user_settings)
     const newUser = db.createUser({
-      email: email.trim().toLowerCase(),
-      username: username.trim().toLowerCase(),
+      email: cleanEmail,
+      username: cleanUsername,
       full_name: full_name.trim(),
       hashed_password: hashedPassword,
       is_active: true,
@@ -57,9 +60,9 @@ export async function POST(request: Request) {
 
     const profile = db.getProfileByUserId(newUser.id);
     const settings = db.getSettingsByUserId(newUser.id);
-    const accessToken = createAccessToken(newUser.id);
+    const accessToken = createAccessToken(newUser, '30d');
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       access_token: accessToken,
       token_type: 'bearer',
       user: {
@@ -73,6 +76,18 @@ export async function POST(request: Request) {
         profile,
         settings,
       },
+    });
+
+    // Set secure authentication and recovery cookies
+    return setAuthCookies(res, accessToken, {
+      id: newUser.id,
+      email: newUser.email,
+      username: newUser.username,
+      full_name: newUser.full_name,
+      hashed_password: newUser.hashed_password,
+      is_active: newUser.is_active,
+      is_onboarded: newUser.is_onboarded,
+      created_at: newUser.created_at,
     });
   } catch (error: any) {
     console.error('Registration API error:', error);
