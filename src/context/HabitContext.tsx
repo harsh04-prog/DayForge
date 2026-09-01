@@ -258,6 +258,21 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       const data = res.data;
+      if (data?.vault_token && typeof window !== 'undefined') {
+        localStorage.setItem('dayforge_data_vault', data.vault_token);
+      }
+
+      if (data?.profile || data?.level_info) {
+        setDashboardData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            profile: data.profile || prev.profile,
+            level_info: data.level_info || prev.level_info,
+          };
+        });
+      }
+
       const targetHabit = habits.find((h) => h.id === id);
 
       // Check Level Up
@@ -318,8 +333,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
       }
 
-      await fetchDashboard();
-      await refreshSession();
+      await Promise.all([fetchDashboard(), refreshSession()]);
     } catch (err: any) {
       showError('Error', err.response?.data?.detail || 'Failed to complete habit.');
       await fetchDashboard();
@@ -344,9 +358,11 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     soundEffects.playPop();
 
     try {
-      await api.post(`/habits/${id}/undo`);
-      await fetchDashboard();
-      await refreshSession();
+      const res = await api.post(`/habits/${id}/undo`);
+      if (res.data?.vault_token && typeof window !== 'undefined') {
+        localStorage.setItem('dayforge_data_vault', res.data.vault_token);
+      }
+      await Promise.all([fetchDashboard(), refreshSession()]);
     } catch (err: any) {
       showError('Error', err.response?.data?.detail || 'Failed to undo habit.');
       await fetchDashboard();

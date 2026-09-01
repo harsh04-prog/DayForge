@@ -96,7 +96,7 @@ export interface HabitLogRecord {
   completed: boolean;
   xp_earned: number;
   note?: string | null;
-  completed_at: string;
+  completed_at?: string | null;
 }
 
 export interface AchievementRecord {
@@ -728,11 +728,27 @@ export const db = {
   },
   createHabitLog(log: Omit<HabitLogRecord, 'id' | 'completed_at'>): HabitLogRecord {
     const data = loadDB();
+    if (!data.habit_logs) data.habit_logs = [];
+    const existingIdx = data.habit_logs.findIndex(
+      (l) => Number(l.habit_id) === Number(log.habit_id) && l.date === log.date
+    );
+
+    const now = new Date().toISOString();
+    if (existingIdx !== -1) {
+      data.habit_logs[existingIdx] = {
+        ...data.habit_logs[existingIdx],
+        ...log,
+        completed_at: log.completed ? now : null,
+      };
+      saveDB(data);
+      return data.habit_logs[existingIdx];
+    }
+
     const id = data.habit_logs.length > 0 ? Math.max(...data.habit_logs.map((l) => l.id)) + 1 : 1;
     const newRecord: HabitLogRecord = {
       ...log,
       id,
-      completed_at: new Date().toISOString(),
+      completed_at: log.completed ? now : null,
     };
     data.habit_logs.push(newRecord);
     saveDB(data);
@@ -750,17 +766,36 @@ export const db = {
   // Gamification & XP
   addXp(userId: number, amount: number, sourceType: string, sourceId?: number, description = ''): void {
     const data = loadDB();
-    const profile = data.profiles.find((p) => p.user_id === userId);
-    if (!profile) return;
+    if (!data.profiles) data.profiles = [];
+    let profile = data.profiles.find((p) => Number(p.user_id) === Number(userId));
+    if (!profile) {
+      profile = {
+        id: data.profiles.length > 0 ? Math.max(...data.profiles.map((p) => p.id)) + 1 : 1,
+        user_id: Number(userId),
+        avatar_url: 'male_1',
+        bio: 'Forging habits one day at a time.',
+        level: 1,
+        xp: 0,
+        current_streak: 0,
+        longest_streak: 0,
+        total_habits_completed: 0,
+        overall_consistency: 0,
+        available_shields: 2,
+        primary_goal: 'Build Daily Consistency',
+        focus_areas: 'Productivity, Health',
+      };
+      data.profiles.push(profile);
+    }
 
-    profile.xp += amount;
+    profile.xp = Math.max(0, (profile.xp || 0) + Number(amount));
     profile.level = getLevelForXp(profile.xp).level;
 
+    if (!data.xp_transactions) data.xp_transactions = [];
     const txId = data.xp_transactions.length > 0 ? Math.max(...data.xp_transactions.map((t) => t.id)) + 1 : 1;
     data.xp_transactions.push({
       id: txId,
-      user_id: userId,
-      amount,
+      user_id: Number(userId),
+      amount: Number(amount),
       source_type: sourceType,
       source_id: sourceId || null,
       description,
@@ -1540,7 +1575,19 @@ export const db = {
         data.profiles.push({ ...vault.profile, user_id: uid });
         modified = true;
       } else {
-        data.profiles[pIdx] = { ...data.profiles[pIdx], ...vault.profile, user_id: uid };
+        const existing = data.profiles[pIdx];
+        const mergedXp = Math.max(Number(existing.xp || 0), Number(vault.profile.xp || 0));
+        const mergedLevel = getLevelForXp(mergedXp).level;
+        data.profiles[pIdx] = {
+          ...existing,
+          ...vault.profile,
+          user_id: uid,
+          xp: mergedXp,
+          level: mergedLevel,
+          current_streak: Math.max(Number(existing.current_streak || 0), Number(vault.profile.current_streak || 0)),
+          longest_streak: Math.max(Number(existing.longest_streak || 0), Number(vault.profile.longest_streak || 0)),
+          total_habits_completed: Math.max(Number(existing.total_habits_completed || 0), Number(vault.profile.total_habits_completed || 0)),
+        };
         modified = true;
       }
     }
