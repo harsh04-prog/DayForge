@@ -191,14 +191,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const triggerTestNotification = async () => {
     try {
-      const smartQuote = getSmartHabitNotification('Drink Water', 'Health', user?.full_name?.split(' ')[0]);
-      
-      const res = await api.post<NotificationItem>('/notifications/test', {
-        title: smartQuote.title,
-        message: smartQuote.message,
-        icon: smartQuote.icon,
-      });
-
+      const res = await api.post<NotificationItem>('/notifications/test', {});
       soundEffects.playComplete();
       if (res.data) {
         setNotifications((prev) => [res.data, ...prev.filter((n) => Number(n.id) !== Number(res.data.id))]);
@@ -206,14 +199,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       await fetchBudget();
 
       // Show Service Worker / Native Push with sound & vibration
-      await showLocalSmartNotification(
-        res.data?.title || smartQuote.title,
-        res.data?.message || smartQuote.message,
-        smartQuote.icon,
-        '/'
-      );
-
-      showSuccess('Smart Reminder Fired ⚡', smartQuote.message);
+      if (res.data) {
+        await showLocalSmartNotification(
+          res.data.title,
+          res.data.message,
+          res.data.icon,
+          '/'
+        );
+        showSuccess('Smart Reminder Fired ⚡', res.data.message);
+      }
     } catch {
       showError('Error', 'Could not fire companion reminder.');
     }
