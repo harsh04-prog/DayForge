@@ -91,12 +91,96 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (isAuthenticated) {
       fetchNotifications();
       const interval = setInterval(fetchNotifications, 60000);
-      return () => clearInterval(interval);
+
+      // Active reminder checker loop (checks every 15s for due to-dos and habits)
+      const firedReminders = new Set<string>();
+
+      const checkDueReminders = async () => {
+        if (typeof window === 'undefined') return;
+        const now = new Date();
+        const currentHH = String(now.getHours()).padStart(2, '0');
+        const currentMM = String(now.getMinutes()).padStart(2, '0');
+        const currentHHMM = `${currentHH}:${currentMM}`;
+        const todayKey = `${now.toISOString().split('T')[0]}_${currentHHMM}`;
+
+        // 1. Check to-dos
+        try {
+          const cachedTodosRaw = localStorage.getItem('dayforge_todos_cache');
+          if (cachedTodosRaw) {
+            const todosList = JSON.parse(cachedTodosRaw);
+            if (Array.isArray(todosList)) {
+              for (const t of todosList) {
+                if (t.reminder_enabled && t.reminder_time && !t.completed) {
+                  const todoKey = `todo_${t.id}_${todayKey}`;
+                  if (t.reminder_time === currentHHMM && !firedReminders.has(todoKey)) {
+                    firedReminders.add(todoKey);
+                    const smart = getSmartHabitNotification(t.title, t.category, user?.full_name?.split(' ')[0], true);
+                    soundEffects.playComplete();
+                    await showLocalSmartNotification(
+                      `Task Reminder: ${t.title}`,
+                      smart.message,
+                      'check-square',
+                      '/todos'
+                    );
+                    showSuccess(`Task Reminder: ${t.title}`, smart.message);
+                    api.post('/notifications/test', {
+                      title: `Task Reminder: ${t.title}`,
+                      message: smart.message,
+                      icon: 'check-square',
+                    }).catch(() => {});
+                    fetchNotifications();
+                  }
+                }
+              }
+            }
+          }
+        } catch {}
+
+        // 2. Check habits
+        try {
+          const cachedDashRaw = localStorage.getItem('dayforge_dashboard_cache');
+          if (cachedDashRaw) {
+            const dash = JSON.parse(cachedDashRaw);
+            if (dash && Array.isArray(dash.habits)) {
+              for (const h of dash.habits) {
+                if (h.reminder_enabled && h.reminder_time && !h.today_completed && h.is_active) {
+                  const habitKey = `habit_${h.id}_${todayKey}`;
+                  if (h.reminder_time === currentHHMM && !firedReminders.has(habitKey)) {
+                    firedReminders.add(habitKey);
+                    const smart = getSmartHabitNotification(h.name || h.title, h.category, user?.full_name?.split(' ')[0], false);
+                    soundEffects.playComplete();
+                    await showLocalSmartNotification(
+                      smart.title,
+                      smart.message,
+                      smart.icon || 'zap',
+                      '/habits'
+                    );
+                    showSuccess(smart.title, smart.message);
+                    api.post('/notifications/test', {
+                      title: smart.title,
+                      message: smart.message,
+                      icon: smart.icon || 'zap',
+                    }).catch(() => {});
+                    fetchNotifications();
+                  }
+                }
+              }
+            }
+          }
+        } catch {}
+      };
+
+      const reminderInterval = setInterval(checkDueReminders, 15000);
+
+      return () => {
+        clearInterval(interval);
+        clearInterval(reminderInterval);
+      };
     } else {
       setNotifications([]);
       setBudget(null);
     }
-  }, [isAuthenticated, fetchNotifications]);
+  }, [isAuthenticated, fetchNotifications, user]);
 
   const showLocalSmartNotification = async (title: string, message: string, icon?: string, actionUrl?: string) => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;

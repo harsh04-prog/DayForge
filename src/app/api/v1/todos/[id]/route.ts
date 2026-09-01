@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getUserIdFromRequest, createUserDataVaultToken } from '@/lib/auth';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = getUserIdFromRequest(request);
@@ -23,7 +23,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (!updated) {
       return NextResponse.json({ detail: 'Task not found.' }, { status: 404 });
     }
-    return NextResponse.json(updated);
+
+    const latestVaultData = db.getUserVaultData(userId);
+    const vaultToken = createUserDataVaultToken(latestVaultData);
+
+    const res = NextResponse.json(updated);
+    res.headers.set('x-dayforge-vault-token', vaultToken);
+    return res;
   } catch (error: any) {
     console.error('Update todo error:', error);
     return NextResponse.json({ detail: 'Failed to update task.' }, { status: 500 });
@@ -49,5 +55,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!deleted) {
     return NextResponse.json({ detail: 'Task not found.' }, { status: 404 });
   }
-  return NextResponse.json({ success: true, message: 'Task deleted successfully.' });
+
+  const latestVaultData = db.getUserVaultData(userId);
+  const vaultToken = createUserDataVaultToken(latestVaultData);
+
+  const res = NextResponse.json({
+    success: true,
+    message: 'Task deleted successfully.',
+    vault_token: vaultToken,
+  });
+  res.headers.set('x-dayforge-vault-token', vaultToken);
+  return res;
 }

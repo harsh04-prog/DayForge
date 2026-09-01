@@ -174,9 +174,20 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteTodo = async (id: number) => {
-    setTodos((prev) => prev.filter((t) => Number(t.id) !== Number(id)));
+    const numId = Number(id);
+    setTodos((prev) => {
+      const updated = prev.filter((t) => Number(t.id) !== numId);
+      try {
+        localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     try {
-      await api.delete(`/todos/${id}`);
+      const res = await api.delete(`/todos/${numId}`);
+      if (res.data?.vault_token && typeof window !== 'undefined') {
+        localStorage.setItem('dayforge_data_vault', res.data.vault_token);
+      }
       showSuccess('Task Deleted', 'Task removed from your list.');
       await fetchTodos();
     } catch (err: any) {

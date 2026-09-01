@@ -132,8 +132,9 @@ export interface NotificationRecord {
   id: number;
   user_id: number;
   habit_id?: number | null;
+  todo_id?: number | null;
   notification_type: string;
-  category: 'habits' | 'wellness' | 'routine' | 'progress' | 'reflection' | 'motivation';
+  category: 'habits' | 'wellness' | 'routine' | 'progress' | 'reflection' | 'motivation' | 'todo';
   priority: 'high' | 'medium' | 'low';
   title: string;
   message: string;
@@ -208,6 +209,8 @@ export interface DBData {
   user_challenges: UserChallengeRecord[];
   user_challenge_logs: UserChallengeLogRecord[];
   todos: TodoRecord[];
+  deleted_todos?: number[];
+  deleted_habits?: number[];
 }
 
 function getWritableFilePath(): string {
@@ -337,6 +340,10 @@ export const db = {
   getUserByUsername(username: string): UserRecord | undefined {
     const data = loadDB();
     return data.users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+  },
+  getAllUsers(): UserRecord[] {
+    const data = loadDB();
+    return data.users || [];
   },
   getUserById(id: number): UserRecord | undefined {
     const data = loadDB();
@@ -690,10 +697,17 @@ export const db = {
   },
   deleteHabit(id: number): boolean {
     const data = loadDB();
-    const idx = data.habits.findIndex((h) => h.id === id);
-    if (idx === -1) return false;
-    data.habits.splice(idx, 1);
-    data.habit_logs = data.habit_logs.filter((l) => l.habit_id !== id);
+    if (!data.habits) data.habits = [];
+    if (!data.deleted_habits) data.deleted_habits = [];
+    const numId = Number(id);
+    const idx = data.habits.findIndex((h) => Number(h.id) === numId);
+    if (idx !== -1) {
+      data.habits.splice(idx, 1);
+    }
+    if (!data.deleted_habits.includes(numId)) {
+      data.deleted_habits.push(numId);
+    }
+    data.habit_logs = (data.habit_logs || []).filter((l) => Number(l.habit_id) !== numId);
     saveDB(data);
     return true;
   },
@@ -836,6 +850,9 @@ export const db = {
   },
 
   // Notifications
+  getNotifications(userId: number): NotificationRecord[] {
+    return db.getNotificationsByUserId(userId);
+  },
   getNotificationsByUserId(userId: number): NotificationRecord[] {
     const data = loadDB();
     let userNotifs = data.notifications.filter((n) => n.user_id === userId);
@@ -1442,9 +1459,15 @@ export const db = {
   deleteTodo(id: number): boolean {
     const data = loadDB();
     if (!data.todos) data.todos = [];
-    const idx = data.todos.findIndex((t) => Number(t.id) === Number(id));
-    if (idx === -1) return false;
-    data.todos.splice(idx, 1);
+    if (!data.deleted_todos) data.deleted_todos = [];
+    const numId = Number(id);
+    const idx = data.todos.findIndex((t) => Number(t.id) === numId);
+    if (idx !== -1) {
+      data.todos.splice(idx, 1);
+    }
+    if (!data.deleted_todos.includes(numId)) {
+      data.deleted_todos.push(numId);
+    }
     saveDB(data);
     return true;
   },
@@ -1459,11 +1482,14 @@ export const db = {
 
     let modified = false;
 
-    // 1. Sync habits
+    // 1. Sync habits (filter out deleted items)
     if (Array.isArray(vault.habits) && vault.habits.length > 0) {
       if (!data.habits) data.habits = [];
+      const deletedHabits = data.deleted_habits || [];
       vault.habits.forEach((vh: any) => {
-        const existingIdx = data.habits.findIndex((h) => Number(h.id) === Number(vh.id));
+        const hId = Number(vh.id);
+        if (deletedHabits.includes(hId)) return;
+        const existingIdx = data.habits.findIndex((h) => Number(h.id) === hId);
         if (existingIdx === -1) {
           data.habits.push({ ...vh, user_id: uid });
           modified = true;
@@ -1474,11 +1500,14 @@ export const db = {
       });
     }
 
-    // 2. Sync to-dos
+    // 2. Sync to-dos (filter out deleted items)
     if (Array.isArray(vault.todos) && vault.todos.length > 0) {
       if (!data.todos) data.todos = [];
+      const deletedTodos = data.deleted_todos || [];
       vault.todos.forEach((vt: any) => {
-        const existingIdx = data.todos.findIndex((t) => Number(t.id) === Number(vt.id));
+        const tId = Number(vt.id);
+        if (deletedTodos.includes(tId)) return;
+        const existingIdx = data.todos.findIndex((t) => Number(t.id) === tId);
         if (existingIdx === -1) {
           data.todos.push({ ...vt, user_id: uid });
           modified = true;

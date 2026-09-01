@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getUserIdFromRequest, createUserDataVaultToken } from '@/lib/auth';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = getUserIdFromRequest(request);
@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const habitId = parseInt(id, 10);
   const habit = db.getHabitById(habitId);
 
-  if (!habit || habit.user_id !== userId) {
+  if (!habit || Number(habit.user_id) !== Number(userId)) {
     return NextResponse.json({ detail: 'Habit not found' }, { status: 404 });
   }
 
@@ -26,14 +26,20 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const habitId = parseInt(id, 10);
   const habit = db.getHabitById(habitId);
 
-  if (!habit || habit.user_id !== userId) {
+  if (!habit || Number(habit.user_id) !== Number(userId)) {
     return NextResponse.json({ detail: 'Habit not found' }, { status: 404 });
   }
 
   try {
     const body = await request.json();
     const updated = db.updateHabit(habitId, body);
-    return NextResponse.json(updated);
+
+    const latestVaultData = db.getUserVaultData(userId);
+    const vaultToken = createUserDataVaultToken(latestVaultData);
+
+    const res = NextResponse.json(updated);
+    res.headers.set('x-dayforge-vault-token', vaultToken);
+    return res;
   } catch (error: any) {
     return NextResponse.json({ detail: 'Failed to update habit' }, { status: 500 });
   }
@@ -47,12 +53,21 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const habitId = parseInt(id, 10);
   const habit = db.getHabitById(habitId);
 
-  if (!habit || habit.user_id !== userId) {
+  if (!habit || Number(habit.user_id) !== Number(userId)) {
     return NextResponse.json({ detail: 'Habit not found' }, { status: 404 });
   }
 
   db.deleteHabit(habitId);
   db.recalculateUserStats(userId);
 
-  return NextResponse.json({ success: true, message: 'Habit deleted successfully' });
+  const latestVaultData = db.getUserVaultData(userId);
+  const vaultToken = createUserDataVaultToken(latestVaultData);
+
+  const res = NextResponse.json({
+    success: true,
+    message: 'Habit deleted successfully',
+    vault_token: vaultToken,
+  });
+  res.headers.set('x-dayforge-vault-token', vaultToken);
+  return res;
 }
