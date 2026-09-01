@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = getUserIdFromRequest(request);
@@ -10,6 +10,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const todoId = parseInt(resolvedParams.id, 10);
   if (isNaN(todoId)) {
     return NextResponse.json({ detail: 'Invalid task ID.' }, { status: 400 });
+  }
+
+  // Reconcile client vault if cold container
+  const userVault = getUserVaultDataFromRequest(request);
+  if (userVault && Number(userVault.userId) === Number(userId)) {
+    db.syncUserDataFromVault(userId, userVault);
   }
 
   const existingTodo = db.getTodoById(todoId);
@@ -27,5 +33,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     db.addXP(userId, 5, 'todo_completion', todoId, `Completed Task: ${toggled.title}`);
   }
 
-  return NextResponse.json(toggled);
+  const latestVaultData = db.getUserVaultData(userId);
+  const vaultToken = createUserDataVaultToken(latestVaultData);
+
+  const res = NextResponse.json({
+    ...toggled,
+    vault_token: vaultToken,
+  });
+  res.headers.set('x-dayforge-vault-token', vaultToken);
+  return res;
 }

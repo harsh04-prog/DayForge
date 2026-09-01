@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { soundEffects } from '../utils/soundEffects';
 import confetti from 'canvas-confetti';
+import { formatDate } from '../lib/streakEngine';
 
 export interface TodoItem {
   id: number;
@@ -45,6 +46,16 @@ interface TodoContextType {
 
 const TodoContext = createContext<TodoContextType | undefined>(undefined);
 
+function computeStats(todoList: TodoItem[]): TodoStats {
+  const todayStr = formatDate(new Date());
+  const total = todoList.length;
+  const completed = todoList.filter((t) => t.completed).length;
+  const pending = todoList.filter((t) => !t.completed).length;
+  const today = todoList.filter((t) => !t.completed && t.due_date === todayStr).length;
+  const overdue = todoList.filter((t) => !t.completed && t.due_date && t.due_date < todayStr).length;
+  return { total, pending, today, overdue, completed };
+}
+
 export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const { showSuccess, showError, showXPToast } = useToast();
@@ -69,7 +80,7 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (cached) return JSON.parse(cached);
       } catch {}
     }
-    return { total: 0, pending: 0, today: 0, overdue: 0, completed: 0 };
+    return computeStats(todos);
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -79,15 +90,15 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       const res = await api.get<{ todos: TodoItem[]; stats: TodoStats }>('/todos');
       if (res.data) {
-        setTodos(res.data.todos || []);
-        if (res.data.stats) setStats(res.data.stats);
+        const freshTodos = res.data.todos || [];
+        setTodos(freshTodos);
+        const calculatedStats = res.data.stats || computeStats(freshTodos);
+        setStats(calculatedStats);
 
         if (typeof window !== 'undefined') {
           try {
-            localStorage.setItem('dayforge_todos_cache', JSON.stringify(res.data.todos || []));
-            if (res.data.stats) {
-              localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(res.data.stats));
-            }
+            localStorage.setItem('dayforge_todos_cache', JSON.stringify(freshTodos));
+            localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(calculatedStats));
           } catch {}
         }
       }
@@ -106,17 +117,24 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const createTodo = async (data: Partial<TodoItem>): Promise<TodoItem> => {
     try {
-      const res = await api.post<TodoItem>('/todos', data);
+      const res = await api.post<TodoItem & { vault_token?: string }>('/todos', data);
+      const newTodo = res.data;
       setTodos((prev) => {
-        const updated = [res.data, ...prev];
+        const updated = [newTodo, ...prev];
+        const newStats = computeStats(updated);
+        setStats(newStats);
         try {
           localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+          localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(newStats));
         } catch {}
         return updated;
       });
-      showSuccess('Task Created', `"${res.data.title}" added to your to-do list.`);
+      if (res.data?.vault_token && typeof window !== 'undefined') {
+        localStorage.setItem('dayforge_data_vault', res.data.vault_token);
+      }
+      showSuccess('Task Created', `"${newTodo.title}" added to your to-do list.`);
       await fetchTodos();
-      return res.data;
+      return newTodo;
     } catch (err: any) {
       showError('Error', err.response?.data?.detail || 'Failed to create task.');
       throw err;
@@ -124,15 +142,22 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateTodo = async (id: number, data: Partial<TodoItem>): Promise<TodoItem> => {
+    const numId = Number(id);
     try {
-      const res = await api.put<TodoItem>(`/todos/${id}`, data);
+      const res = await api.put<TodoItem & { vault_token?: string }>(`/todos/${numId}`, data);
       setTodos((prev) => {
-        const updated = prev.map((t) => (Number(t.id) === Number(id) ? res.data : t));
+        const updated = prev.map((t) => (Number(t.id) === numId ? res.data : t));
+        const newStats = computeStats(updated);
+        setStats(newStats);
         try {
           localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+          localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(newStats));
         } catch {}
         return updated;
       });
+      if (res.data?.vault_token && typeof window !== 'undefined') {
+        localStorage.setItem('dayforge_data_vault', res.data.vault_token);
+      }
       showSuccess('Task Updated', 'Task changes saved.');
       await fetchTodos();
       return res.data;
@@ -143,15 +168,33 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const toggleTodo = async (id: number) => {
-    // Optimistic toggle
-    const currentTodo = todos.find((t) => Number(t.id) === Number(id));
-    const newCompleted = currentTodo ? !currentTodo.completed : true;
+    const numId = Number(id);
+    let isNowCompleted = false;
 
-    setTodos((prev) =>
-      prev.map((t) => (Number(t.id) === Number(id) ? { ...t, completed: newCompleted } : t))
-    );
+    // 1. Optimistic state and cache update
+    setTodos((prev) => {
+      const updated = prev.map((t) => {
+        if (Number(t.id) === numId) {
+          isNowCompleted = !t.completed;
+          return {
+            ...t,
+            completed: isNowCompleted,
+            completed_at: isNowCompleted ? new Date().toISOString() : null,
+          };
+        }
+        return t;
+      });
+      const newStats = computeStats(updated);
+      setStats(newStats);
+      try {
+        localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+        localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(newStats));
+      } catch {}
+      return updated;
+    });
 
-    if (newCompleted) {
+    // 2. Audio & Visual celebrations
+    if (isNowCompleted) {
       soundEffects.playComplete();
       showXPToast(5, 'Task Checked Off!');
       confetti({
@@ -163,26 +206,35 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       soundEffects.playPop();
     }
 
+    // 3. Persist to API & Vault
     try {
-      await api.post(`/todos/${id}/toggle`);
+      const res = await api.post(`/todos/${numId}/toggle`);
+      if (res.data?.vault_token && typeof window !== 'undefined') {
+        localStorage.setItem('dayforge_data_vault', res.data.vault_token);
+      }
       await fetchTodos();
     } catch (err: any) {
-      // Rollback
       await fetchTodos();
-      showError('Error', err.response?.data?.detail || 'Failed to toggle task.');
+      showError('Error', err.response?.data?.detail || 'Failed to toggle task status.');
     }
   };
 
   const deleteTodo = async (id: number) => {
     const numId = Number(id);
+    
+    // 1. Optimistic remove from local list & cache
     setTodos((prev) => {
       const updated = prev.filter((t) => Number(t.id) !== numId);
+      const newStats = computeStats(updated);
+      setStats(newStats);
       try {
         localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+        localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(newStats));
       } catch {}
       return updated;
     });
 
+    // 2. Persist delete on API & Vault
     try {
       const res = await api.delete(`/todos/${numId}`);
       if (res.data?.vault_token && typeof window !== 'undefined') {

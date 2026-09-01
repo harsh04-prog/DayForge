@@ -329,6 +329,16 @@
       "is_onboarded": true,
       "id": 33,
       "created_at": "2026-09-01T13:06:25.799Z"
+    },
+    {
+      "email": "todo_crud_tester_1788268722109@example.com",
+      "username": "crud_user_2109",
+      "full_name": "CRUD Tester",
+      "hashed_password": "$2a$10$lk6XBNPtvrzblUqKdZaJi.SkJj6.IzRKzCc4xP3OutvGK/SdD5MwC",
+      "is_active": true,
+      "is_onboarded": false,
+      "id": 34,
+      "created_at": "2026-09-01T13:18:43.539Z"
     }
   ],
   "profiles": [
@@ -838,6 +848,21 @@
       "available_shields": 2,
       "primary_goal": "Consistency & Character Leveling",
       "focus_areas": "Health,Fitness,Reading"
+    },
+    {
+      "id": 34,
+      "user_id": 34,
+      "avatar_url": "male_1",
+      "bio": "Forging habits one day at a time.",
+      "level": 1,
+      "xp": 25,
+      "current_streak": 0,
+      "longest_streak": 0,
+      "total_habits_completed": 0,
+      "overall_consistency": 0,
+      "available_shields": 2,
+      "primary_goal": "Build Daily Consistency",
+      "focus_areas": "Productivity, Health"
     }
   ],
   "user_settings": [
@@ -1548,6 +1573,28 @@
     {
       "id": 33,
       "user_id": 33,
+      "habit_reminders": true,
+      "streak_reminders": true,
+      "wellness_reminders": true,
+      "progress_reminders": true,
+      "motivational_messages": true,
+      "weekly_review": true,
+      "challenge_notifications": true,
+      "max_daily_reminders": 10,
+      "sound_enabled": true,
+      "sound_type": "bell",
+      "quiet_hours_enabled": false,
+      "quiet_hours_start": "22:00",
+      "quiet_hours_end": "07:00",
+      "theme": "light",
+      "week_start_day": "monday",
+      "time_format": "12h",
+      "preferred_units": "metric",
+      "profile_visibility": "public"
+    },
+    {
+      "id": 34,
+      "user_id": 34,
       "habit_reminders": true,
       "streak_reminders": true,
       "wellness_reminders": true,
@@ -5395,6 +5442,51 @@
       "source_id": 63,
       "description": "Completed Drink 2L Water",
       "created_at": "2026-09-01T13:06:36.715Z"
+    },
+    {
+      "id": 99,
+      "user_id": 34,
+      "amount": 5,
+      "source_type": "todo_completion",
+      "source_id": 17,
+      "description": "Completed Task: Task #1 - Finish Code Review",
+      "created_at": "2026-09-01T13:18:44.602Z"
+    },
+    {
+      "id": 100,
+      "user_id": 34,
+      "amount": 5,
+      "source_type": "todo_completion",
+      "source_id": 17,
+      "description": "Completed Task: Task #2 - Finish Code Review",
+      "created_at": "2026-09-01T13:18:45.628Z"
+    },
+    {
+      "id": 101,
+      "user_id": 34,
+      "amount": 5,
+      "source_type": "todo_completion",
+      "source_id": 17,
+      "description": "Completed Task: Task #3 - Finish Code Review",
+      "created_at": "2026-09-01T13:18:45.857Z"
+    },
+    {
+      "id": 102,
+      "user_id": 34,
+      "amount": 5,
+      "source_type": "todo_completion",
+      "source_id": 17,
+      "description": "Completed Task: Task #4 - Finish Code Review",
+      "created_at": "2026-09-01T13:18:46.351Z"
+    },
+    {
+      "id": 103,
+      "user_id": 34,
+      "amount": 5,
+      "source_type": "todo_completion",
+      "source_id": 17,
+      "description": "Completed Task: Task #5 - Finish Code Review",
+      "created_at": "2026-09-01T13:18:46.553Z"
     }
   ],
   "notifications": [

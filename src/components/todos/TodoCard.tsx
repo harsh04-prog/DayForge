@@ -29,6 +29,24 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, onEdit }) => {
     }
   };
 
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleTodo(todo.id);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deleteTodo(todo.id);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(todo);
+  };
+
   return (
     <motion.div
       layout
@@ -38,7 +56,7 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, onEdit }) => {
       transition={{ duration: 0.2 }}
       className={`group w-full rounded-3xl p-4 sm:p-5 transition-all duration-200 border flex items-start justify-between gap-3.5 ${
         todo.completed
-          ? 'bg-slate-50/70 border-slate-200/60 opacity-60 shadow-xs'
+          ? 'bg-slate-50/80 border-slate-200/60 opacity-65 shadow-xs'
           : isOverdue
           ? 'bg-rose-50/30 border-rose-200/80 hover:border-rose-300 shadow-soft'
           : 'bg-white border-slate-200/90 hover:border-[#6C5CE7]/40 hover:shadow-soft'
@@ -47,8 +65,8 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, onEdit }) => {
       {/* Checkbox Tick Button */}
       <button
         type="button"
-        onClick={() => toggleTodo(todo.id)}
-        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 transition-all select-none mt-0.5 ${
+        onClick={handleCheckboxClick}
+        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0 transition-all select-none mt-0.5 cursor-pointer active:scale-95 focus:outline-none ${
           todo.completed
             ? 'bg-[#10B981] text-white shadow-xs'
             : 'border-2 border-slate-300 hover:border-[#6C5CE7] hover:bg-[#6C5CE7]/10'
@@ -67,7 +85,7 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, onEdit }) => {
       </button>
 
       {/* Task Content Column */}
-      <div className="flex-1 min-w-0 space-y-1.5">
+      <div className="flex-1 min-w-0 space-y-1.5 cursor-pointer" onClick={() => onEdit(todo)}>
         <div className="flex items-center gap-2 flex-wrap">
           {todo.priority && (
             <span
@@ -135,11 +153,11 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, onEdit }) => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-1 shrink-0 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 shrink-0 opacity-100 sm:opacity-80 sm:group-hover:opacity-100 transition-opacity">
         <button
           type="button"
-          onClick={() => onEdit(todo)}
-          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+          onClick={handleEditClick}
+          className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           title="Edit task"
         >
           <Edit3 className="w-4 h-4" />
@@ -147,8 +165,8 @@ export const TodoCard: React.FC<TodoCardProps> = ({ todo, onEdit }) => {
 
         <button
           type="button"
-          onClick={() => deleteTodo(todo.id)}
-          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+          onClick={handleDeleteClick}
+          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer active:scale-95"
           title="Delete task"
         >
           <Trash2 className="w-4 h-4" />
