@@ -1,17 +1,19 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import { NotificationItem, NotificationBudget } from '../types';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 import { soundEffects } from '../utils/soundEffects';
+import { getSmartHabitNotification } from '../lib/smartNotifications';
 
 interface NotificationContextType {
   notifications: NotificationItem[];
   budget: NotificationBudget | null;
   unreadCount: number;
   isLoading: boolean;
+  permissionStatus: NotificationPermission | 'default';
   fetchNotifications: () => Promise<void>;
   fetchBudget: () => Promise<void>;
   markAsRead: (id: number) => Promise<void>;
@@ -20,34 +22,40 @@ interface NotificationContextType {
   snoozeNotification: (id: number, minutes: number) => Promise<void>;
   completeFromNotification: (id: number) => Promise<void>;
   triggerTestNotification: () => Promise<void>;
-  requestBrowserPermission: () => Promise<void>;
+  requestBrowserPermission: () => Promise<boolean>;
+  showLocalSmartNotification: (title: string, message: string, icon?: string, actionUrl?: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { isAuthenticated, user } = useAuth();
+  const { showSuccess, showError, showInfo } = useToast();
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [budget, setBudget] = useState<NotificationBudget | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'default'>('default');
+  const triggeredTimesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPermissionStatus(Notification.permission);
+    }
+  }, []);
 
   const fetchBudget = useCallback(async () => {
     if (!isAuthenticated) return;
-    if (typeof window !== 'undefined' && !localStorage.getItem('dayforge_token')) return;
-
     try {
       const res = await api.get<NotificationBudget>('/notifications/budget');
       if (res.data) {
         setBudget(res.data);
       }
     } catch {
-      // Fallback budget if temporarily unreachable
       setBudget((prev) => prev || {
         sent_today_count: 0,
-        max_daily_budget: 10,
-        remaining_today: 10,
+        max_daily_budget: 12,
+        remaining_today: 12,
         quiet_hours_active: false,
       });
     }
@@ -56,9 +64,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchNotifications = useCallback(async () => {
     if (!isAuthenticated) {
       setNotifications([]);
-      return;
-    }
-    if (typeof window !== 'undefined' && !localStorage.getItem('dayforge_token')) {
       return;
     }
 
@@ -76,7 +81,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setBudget(budgetRes.data);
       }
     } catch {
-      // Graceful fallback to avoid error overlays
       setNotifications((prev) => prev || []);
     } finally {
       setIsLoading(false);
@@ -86,7 +90,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
-      // Periodically sync every 60s
       const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
     } else {
@@ -94,6 +97,34 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setBudget(null);
     }
   }, [isAuthenticated, fetchNotifications]);
+
+  const showLocalSmartNotification = async (title: string, message: string, icon?: string, actionUrl?: string) => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+        const registration = await navigator.serviceWorker.ready;
+        await registration.showNotification(title, {
+          body: message,
+          icon: '/dayforge-favicon.png',
+          badge: '/icons/icon-192x192.png',
+          vibrate: [100, 50, 100],
+          tag: `dayforge-${Date.now()}`,
+          data: {
+            url: actionUrl || '/',
+          },
+        } as any);
+      } else {
+        new Notification(title, {
+          body: message,
+          icon: '/dayforge-favicon.png',
+        });
+      }
+    } catch (e) {
+      console.warn('Notification show attempt:', e);
+    }
+  };
 
   const markAsRead = async (id: number) => {
     try {
@@ -151,33 +182,64 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const triggerTestNotification = async () => {
     try {
-      const res = await api.post<NotificationItem>('/notifications/test');
+      const smartQuote = getSmartHabitNotification('Drink Water', 'Health', user?.full_name?.split(' ')[0]);
+      
+      const res = await api.post<NotificationItem>('/notifications/test', {
+        title: smartQuote.title,
+        message: smartQuote.message,
+        icon: smartQuote.icon,
+      });
+
       soundEffects.playComplete();
       if (res.data) {
         setNotifications((prev) => [res.data, ...prev.filter((n) => n.id !== res.data.id)]);
       }
       await fetchBudget();
 
-      // Native Browser Push Notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(res.data.title, {
-          body: res.data.message,
-          icon: '/favicon.ico',
-        });
-      }
+      // Show Service Worker / Native Push
+      await showLocalSmartNotification(
+        res.data?.title || smartQuote.title,
+        res.data?.message || smartQuote.message,
+        smartQuote.icon,
+        '/'
+      );
 
-      showSuccess('Companion Reminder Fired', res.data.title);
+      showSuccess('Smart Reminder Fired ⚡', smartQuote.message);
     } catch {
-      showError('Error', 'Could not send companion reminder.');
+      showError('Error', 'Could not fire companion reminder.');
     }
   };
 
-  const requestBrowserPermission = async () => {
-    if ('Notification' in window) {
+  const requestBrowserPermission = async (): Promise<boolean> => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      showInfo('Not Supported', 'Web notifications are not supported on this browser.');
+      return false;
+    }
+
+    try {
       const perm = await Notification.requestPermission();
+      setPermissionStatus(perm);
+
       if (perm === 'granted') {
-        showSuccess('System Notifications Active', 'Smart reminders will notify you smoothly.');
+        showSuccess('Notifications Enabled 🔔', 'Personalized DayForge habit reminders are active.');
+        await showLocalSmartNotification(
+          'DayForge Reminders Active ⚡',
+          'You will now receive gentle smart habit check-ins and streak updates!',
+          'zap',
+          '/'
+        );
+        return true;
+      } else if (perm === 'denied') {
+        showInfo(
+          'Notifications Blocked',
+          'Notifications are blocked in your browser settings. To enable them, click the lock icon in your address bar and allow Notifications.'
+        );
+        return false;
       }
+      return false;
+    } catch (err) {
+      console.error('Permission request error:', err);
+      return false;
     }
   };
 
@@ -190,6 +252,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         budget,
         unreadCount,
         isLoading,
+        permissionStatus,
         fetchNotifications,
         fetchBudget,
         markAsRead,
@@ -199,6 +262,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         completeFromNotification,
         triggerTestNotification,
         requestBrowserPermission,
+        showLocalSmartNotification,
       }}
     >
       {children}

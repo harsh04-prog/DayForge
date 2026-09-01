@@ -79,7 +79,7 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // 5. Register Service Worker with update detection
+    // 5. Register Service Worker with update detection & periodic check
     serviceWorkerRegistration.register({
       onUpdate: (registration) => {
         setIsUpdateAvailable(true);
@@ -89,11 +89,30 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
     });
 
+    // Check for SW updates periodically and on visibility change
+    const checkSWUpdate = () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.update().catch(() => {});
+        });
+      }
+    };
+
+    const updateInterval = setInterval(checkSWUpdate, 15 * 60 * 1000); // every 15 mins
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSWUpdate();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(updateInterval);
     };
   }, []);
 
@@ -129,7 +148,14 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (waitingWorker) {
       waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     }
-    window.location.reload();
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        names.forEach((name) => caches.delete(name));
+      }).catch(() => {});
+    }
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   return (

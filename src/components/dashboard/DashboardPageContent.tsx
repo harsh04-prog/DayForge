@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useHabits } from '@/context/HabitContext';
 import { TodayProgressCard } from '@/components/dashboard/TodayProgressCard';
 import { DailyScoreCard } from '@/components/dashboard/DailyScoreCard';
 import { TodayHabitCard } from '@/components/dashboard/TodayHabitCard';
+import { TodayChallengeCard } from '@/components/dashboard/TodayChallengeCard';
 import { InteractiveActivityCalendar } from '@/components/dashboard/InteractiveActivityCalendar';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { HabitModal } from '@/components/habits/HabitModal';
-import { Sparkles, Plus } from 'lucide-react';
+import { Sparkles, Plus, Trophy, ArrowRight } from 'lucide-react';
 import { Habit } from '@/types';
+import { api } from '@/services/api';
 
 export const DashboardPageContent: React.FC = () => {
   const { user } = useAuth();
@@ -20,15 +23,36 @@ export const DashboardPageContent: React.FC = () => {
   const [isNewHabitOpen, setIsNewHabitOpen] = useState(false);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
   const [greeting, setGreeting] = useState<string>('Welcome back');
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(false);
+
+  const fetchChallenges = useCallback(async () => {
+    try {
+      setLoadingChallenges(true);
+      const res = await api.get<any[]>('/challenges');
+      if (Array.isArray(res.data)) {
+        setChallenges(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setLoadingChallenges(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchDashboard();
+    fetchChallenges();
     const hour = new Date().getHours();
     setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
-  }, [fetchDashboard]);
+  }, [fetchDashboard, fetchChallenges]);
 
   const firstName = user?.full_name?.split(' ')[0] || user?.username || 'Hero';
   const activeHabits = dashboardData?.habits || habits;
+
+  const joinedChallenges = challenges.filter(
+    (c) => c.is_joined && (c.status === 'active' || c.status === 'completed')
+  );
 
   // Filter habits for checklist
   const filteredHabits = activeHabits.filter((h) => {
@@ -39,6 +63,11 @@ export const DashboardPageContent: React.FC = () => {
     if (filter === 'evening') return h.preferred_time === 'evening' || h.time_of_day === 'evening';
     return true;
   });
+
+  const handleChallengeRefresh = () => {
+    fetchChallenges();
+    fetchDashboard();
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -79,7 +108,41 @@ export const DashboardPageContent: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. "Your Habits" Section with Responsive Checklist */}
+      {/* 3. Today's Joined Challenges (Home Page Challenge Integration) */}
+      {joinedChallenges.length > 0 && (
+        <div className="space-y-3.5 pt-1 sm:pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                <Trophy className="w-4 h-4 text-[#FFB547]" />
+                Today's Challenges
+              </h2>
+              <span className="text-[10px] font-black text-amber-700 bg-amber-100/70 border border-amber-200 px-2 py-0.5 rounded-full">
+                {joinedChallenges.length} Active
+              </span>
+            </div>
+            <Link
+              href="/challenges"
+              className="text-xs font-bold text-[#6C5CE7] hover:underline flex items-center gap-1 min-h-[32px]"
+            >
+              <span>View All Challenges</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            {joinedChallenges.map((challenge) => (
+              <TodayChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                onRefresh={handleChallengeRefresh}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 4. "Your Habits" Section with Responsive Checklist */}
       <div className="space-y-3.5 pt-1 sm:pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2">
@@ -158,7 +221,7 @@ export const DashboardPageContent: React.FC = () => {
         )}
       </div>
 
-      {/* 4. Interactive Activity Calendar */}
+      {/* 5. Interactive Activity Calendar */}
       <InteractiveActivityCalendar />
 
       {/* Habit Create / Edit Modal */}

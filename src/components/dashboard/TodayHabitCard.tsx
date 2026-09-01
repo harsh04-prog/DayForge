@@ -19,9 +19,9 @@ export const TodayHabitCard: React.FC<TodayHabitCardProps> = ({ habit }) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const isCompleted = habit.today_completed;
-  const isQuantitative = habit.habit_type === 'quantitative';
+  const targetVal = Number(habit.target_value) > 0 ? Number(habit.target_value) : 1;
+  const isQuantitative = habit.habit_type === 'quantitative' || targetVal > 1;
   const currentVal = habit.today_progress || 0;
-  const targetVal = habit.target_value || 1;
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();

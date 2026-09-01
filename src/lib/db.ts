@@ -165,6 +165,18 @@ export interface UserChallengeRecord {
   updated_at: string;
 }
 
+export interface UserChallengeLogRecord {
+  id: number;
+  user_id: number;
+  challenge_id: number;
+  date: string; // YYYY-MM-DD
+  progress_value: number;
+  target_value: number;
+  completed: boolean;
+  xp_awarded: number;
+  logged_at: string;
+}
+
 export interface DBData {
   users: UserRecord[];
   profiles: ProfileRecord[];
@@ -177,6 +189,7 @@ export interface DBData {
   notifications: NotificationRecord[];
   challenges: ChallengeRecord[];
   user_challenges: UserChallengeRecord[];
+  user_challenge_logs: UserChallengeLogRecord[];
 }
 
 function getWritableFilePath(): string {
@@ -226,6 +239,7 @@ function getDefaultDB(): DBData {
     notifications: [],
     challenges,
     user_challenges: [],
+    user_challenge_logs: [],
   };
 }
 
@@ -247,14 +261,16 @@ function loadDB(): DBData {
         }
 
         // Ensure challenges exist and sync with full 12 challenge definitions
-        if (!cachedDB.challenges || cachedDB.challenges.length < INITIAL_CHALLENGES.length) {
-          cachedDB.challenges = INITIAL_CHALLENGES.map((c) => ({
-            ...c,
-            participants_count: 0,
-          }));
-        }
+        cachedDB.challenges = INITIAL_CHALLENGES.map((def) => {
+          const existing = cachedDB?.challenges?.find((c) => c.id === def.id || c.code === def.code);
+          return {
+            ...def,
+            participants_count: existing?.participants_count || 0,
+          };
+        });
 
         if (!cachedDB.user_challenges) cachedDB.user_challenges = [];
+        if (!cachedDB.user_challenge_logs) cachedDB.user_challenge_logs = [];
         if (!cachedDB.notifications) cachedDB.notifications = [];
         if (!cachedDB.habits) cachedDB.habits = [];
         if (!cachedDB.habit_logs) cachedDB.habit_logs = [];
@@ -586,28 +602,36 @@ export const db = {
     const id = data.habits.length > 0 ? Math.max(...data.habits.map((h) => h.id)) + 1 : 1;
     const now = new Date().toISOString();
     const habitTitle = habit.title || habit.name || 'Daily Habit';
+    const targetVal = habit.target_value !== undefined ? (Number(habit.target_value) > 0 ? Number(habit.target_value) : 1) : 1;
+    const unit = habit.unit || habit.target_unit || (targetVal > 1 ? 'units' : 'times');
+
     const newRecord: HabitRecord = {
       ...habit,
       id,
       title: habitTitle,
       name: habitTitle,
-      preferred_time: habit.preferred_time || habit.time_of_day || 'morning',
-      time_of_day: habit.time_of_day || habit.preferred_time || 'morning',
-      target_value: habit.target_value || 1,
-      target_unit: habit.target_unit || habit.unit || 'times',
-      target_type: habit.target_type || 'boolean',
-      category: habit.category || 'health',
+      description: habit.description || null,
+      preferred_time: habit.preferred_time || habit.time_of_day || 'anytime',
+      time_of_day: habit.time_of_day || habit.preferred_time || 'anytime',
+      target_value: targetVal,
+      target_unit: unit,
+      unit: unit,
+      target_type: habit.target_type || (targetVal > 1 ? 'numeric' : 'boolean'),
+      habit_type: habit.habit_type || (targetVal > 1 ? 'quantitative' : 'binary'),
+      category: habit.category || 'General',
       color: habit.color || '#6C5CE7',
-      icon: habit.icon || 'activity',
+      icon: habit.icon || 'sparkles',
       frequency_type: habit.frequency_type || 'daily',
-      reminder_enabled: Boolean(habit.reminder_enabled),
+      frequency_days: habit.frequency_days || '0,1,2,3,4,5,6',
+      reminder_time: habit.reminder_time || null,
+      reminder_enabled: Boolean(habit.reminder_enabled || habit.reminder_time),
       is_active: true,
       is_archived: false,
       sort_order: habit.sort_order ?? data.habits.length,
       current_streak: 0,
       longest_streak: 0,
       total_completions: 0,
-      xp_per_completion: habit.xp_per_completion || 15,
+      xp_per_completion: habit.xp_per_completion || (habit.difficulty === 'hard' ? 15 : habit.difficulty === 'easy' ? 5 : 10),
       difficulty: habit.difficulty || 'medium',
       created_at: now,
       updated_at: now,
@@ -616,13 +640,29 @@ export const db = {
     saveDB(data);
     return newRecord;
   },
-  updateHabit(id: number, updates: Partial<HabitRecord>): HabitRecord | null {
+  updateHabit(id: number, updates: any): HabitRecord | null {
     const data = loadDB();
     const idx = data.habits.findIndex((h) => h.id === id);
     if (idx === -1) return null;
+    const current = data.habits[idx];
+    const habitTitle = updates.title || updates.name || current.title || current.name || 'Daily Habit';
+    const targetVal = updates.target_value !== undefined ? (Number(updates.target_value) > 0 ? Number(updates.target_value) : 1) : current.target_value;
+    const unit = updates.unit || updates.target_unit || current.target_unit || current.unit || 'times';
+
     data.habits[idx] = {
-      ...data.habits[idx],
+      ...current,
       ...updates,
+      title: habitTitle,
+      name: habitTitle,
+      description: updates.description !== undefined ? updates.description : current.description,
+      target_value: targetVal,
+      target_unit: unit,
+      unit: unit,
+      habit_type: updates.habit_type || current.habit_type || (targetVal > 1 ? 'quantitative' : 'binary'),
+      preferred_time: updates.preferred_time || updates.time_of_day || current.preferred_time || current.time_of_day || 'anytime',
+      time_of_day: updates.time_of_day || updates.preferred_time || current.time_of_day || current.preferred_time || 'anytime',
+      reminder_time: updates.reminder_time !== undefined ? updates.reminder_time : current.reminder_time,
+      reminder_enabled: updates.reminder_enabled !== undefined ? Boolean(updates.reminder_enabled) : current.reminder_enabled,
       updated_at: new Date().toISOString(),
     };
     saveDB(data);
@@ -909,6 +949,10 @@ export const db = {
     const userLogs = data.habit_logs.filter((l) => l.user_id === userId && l.completed);
     const completedDates = new Set(userLogs.map((l) => l.date));
 
+    if (!data.user_challenge_logs) {
+      data.user_challenge_logs = [];
+    }
+
     return data.challenges.map((ch) => {
       const userCh = data.user_challenges.find(
         (uc) => uc.user_id === userId && uc.challenge_id === ch.id
@@ -918,6 +962,14 @@ export const db = {
       const participantsCount = new Set(
         data.user_challenges.filter((uc) => uc.challenge_id === ch.id && uc.status !== 'left').map((uc) => uc.user_id)
       ).size;
+
+      const dailyTarget = ch.daily_target || 1;
+      const todayChallengeLog = data.user_challenge_logs.find(
+        (l) => l.user_id === userId && l.challenge_id === ch.id && l.date === today
+      );
+
+      const todayProgress = todayChallengeLog ? todayChallengeLog.progress_value : 0;
+      const todayCompleted = todayChallengeLog ? todayChallengeLog.completed : false;
 
       if (!userCh || userCh.status === 'left') {
         return {
@@ -929,7 +981,11 @@ export const db = {
           remaining_days: ch.duration_days,
           progress_days: 0,
           progress_percentage: 0,
-          participants_count: participantsCount,
+          today_progress: 0,
+          today_target: dailyTarget,
+          today_completed: false,
+          unit: ch.unit || 'times',
+          participants_count: Math.max(1, participantsCount),
         };
       }
 
@@ -941,7 +997,13 @@ export const db = {
       const currentDay = Math.min(ch.duration_days, elapsedDays + 1);
       const remainingDays = Math.max(0, ch.duration_days - elapsedDays);
 
-      // Count completed days within the challenge window
+      // Count completed days from user_challenge_logs plus general habit completions
+      const challengeLogsCompletedDates = new Set(
+        data.user_challenge_logs
+          .filter((l) => l.user_id === userId && l.challenge_id === ch.id && l.completed)
+          .map((l) => l.date)
+      );
+
       let completedDays = 0;
       let isBroken = false;
 
@@ -950,12 +1012,14 @@ export const db = {
         d.setDate(d.getDate() + i);
         const dStr = formatDate(d);
 
-        let dayPassed = false;
-        if (ch.target_category) {
-          const catHabitIds = new Set(userHabits.filter((h) => h.category.toLowerCase() === ch.target_category?.toLowerCase()).map((h) => h.id));
-          dayPassed = userLogs.some((l) => l.date === dStr && catHabitIds.has(l.habit_id));
-        } else {
-          dayPassed = completedDates.has(dStr);
+        let dayPassed = challengeLogsCompletedDates.has(dStr);
+        if (!dayPassed) {
+          if (ch.target_category) {
+            const catHabitIds = new Set(userHabits.filter((h) => h.category.toLowerCase() === ch.target_category?.toLowerCase()).map((h) => h.id));
+            dayPassed = userLogs.some((l) => l.date === dStr && catHabitIds.has(l.habit_id));
+          } else {
+            dayPassed = completedDates.has(dStr);
+          }
         }
 
         if (dayPassed) {
@@ -974,8 +1038,7 @@ export const db = {
         challengeStatus = 'completed';
         if (userCh.status !== 'completed') {
           userCh.status = 'completed';
-          // Award XP bonus
-          db.addXp(userId, ch.xp_reward, 'challenge_completion', ch.id, `Completed Challenge: ${ch.title}`);
+          db.addXP(userId, ch.xp_reward, 'challenge_completion', ch.id, `Completed Challenge: ${ch.title}`);
         }
       } else {
         challengeStatus = 'active';
@@ -998,9 +1061,13 @@ export const db = {
         remaining_days: remainingDays,
         progress_days: completedDays,
         progress_percentage: progressPercentage,
+        today_progress: todayProgress,
+        today_target: dailyTarget,
+        today_completed: todayCompleted,
+        unit: ch.unit || 'times',
         started_date: userCh.started_date,
         end_date: userCh.end_date,
-        participants_count: participantsCount,
+        participants_count: Math.max(1, participantsCount),
       };
     });
   },
@@ -1045,19 +1112,111 @@ export const db = {
       });
     }
 
-    // Companion notification
-    db.createNotification({
-      user_id: userId,
-      title: `Joined Challenge: ${ch.title} 🏆`,
-      message: `You're in! Target: ${ch.duration_days} days. ${ch.rule_description}`,
-      category: 'routine',
-      priority: 'high',
-      icon: ch.icon || 'trophy',
-      action_url: '/challenges',
-    });
-
     saveDB(data);
     return { success: true, message: `Successfully joined ${ch.title}!` };
+  },
+
+  checkinChallenge(userId: number, challengeId: number, progressDeltaOrValue?: number, isAbsolute: boolean = false) {
+    const data = loadDB();
+    const ch = data.challenges.find((c) => c.id === challengeId);
+    if (!ch) return null;
+
+    const userCh = data.user_challenges.find(
+      (uc) => uc.user_id === userId && uc.challenge_id === challengeId && (uc.status === 'active' || uc.status === 'completed')
+    );
+    if (!userCh) return null;
+
+    const today = formatDate(new Date());
+    const dailyTarget = ch.daily_target || 1;
+    const dailyXpReward = ch.daily_xp || 15;
+
+    if (!data.user_challenge_logs) {
+      data.user_challenge_logs = [];
+    }
+
+    let log = data.user_challenge_logs.find(
+      (l) => l.user_id === userId && l.challenge_id === challengeId && l.date === today
+    );
+
+    let xpAwarded = 0;
+    let newlyCompleted = false;
+    let challengeCompletedNow = false;
+
+    if (!log) {
+      const id = data.user_challenge_logs.length > 0 ? Math.max(...data.user_challenge_logs.map((l) => l.id)) + 1 : 1;
+      const initialProgress = isAbsolute ? (progressDeltaOrValue ?? dailyTarget) : (progressDeltaOrValue ?? 1);
+      const isDone = initialProgress >= dailyTarget;
+      
+      if (isDone) {
+        xpAwarded = dailyXpReward;
+        newlyCompleted = true;
+        db.addXP(userId, dailyXpReward, 'challenge_daily_checkin', challengeId, `Completed Daily Goal: ${ch.title}`);
+      }
+
+      log = {
+        id,
+        user_id: userId,
+        challenge_id: challengeId,
+        date: today,
+        progress_value: Math.max(0, initialProgress),
+        target_value: dailyTarget,
+        completed: isDone,
+        xp_awarded: xpAwarded,
+        logged_at: new Date().toISOString(),
+      };
+      data.user_challenge_logs.push(log);
+    } else {
+      const updatedValue = isAbsolute ? (progressDeltaOrValue ?? dailyTarget) : (log.progress_value + (progressDeltaOrValue ?? 1));
+      log.progress_value = Math.max(0, updatedValue);
+      const isDone = log.progress_value >= dailyTarget;
+      
+      if (isDone && !log.completed) {
+        log.completed = true;
+        newlyCompleted = true;
+        if (log.xp_awarded === 0) {
+          xpAwarded = dailyXpReward;
+          log.xp_awarded = dailyXpReward;
+          db.addXP(userId, dailyXpReward, 'challenge_daily_checkin', challengeId, `Completed Daily Goal: ${ch.title}`);
+        }
+      } else if (!isDone && log.completed) {
+        log.completed = false;
+      }
+      log.logged_at = new Date().toISOString();
+    }
+
+    // Recalculate completed days
+    const allCompletedDates = new Set(
+      data.user_challenge_logs
+        .filter((l) => l.user_id === userId && l.challenge_id === challengeId && l.completed)
+        .map((l) => l.date)
+    );
+    userCh.completed_days = allCompletedDates.size;
+    userCh.updated_at = new Date().toISOString();
+
+    if (userCh.completed_days >= ch.duration_days && userCh.status !== 'completed') {
+      userCh.status = 'completed';
+      challengeCompletedNow = true;
+      db.addXP(userId, ch.xp_reward, 'challenge_full_completion', challengeId, `Mastered Challenge: ${ch.title} 🏆`);
+    }
+
+    saveDB(data);
+
+    return {
+      success: true,
+      challenge_id: challengeId,
+      today_progress: log.progress_value,
+      today_target: dailyTarget,
+      today_completed: log.completed,
+      completed_days: userCh.completed_days,
+      duration_days: ch.duration_days,
+      xp_awarded: xpAwarded,
+      challenge_completed: challengeCompletedNow,
+      message: challengeCompletedNow
+        ? `🎉 Incredible! You completed the ${ch.title}! +${ch.xp_reward} XP awarded!`
+        : newlyCompleted
+        ? `🔥 Today's challenge goal reached! +${dailyXpReward} XP awarded!`
+        : `Progress updated: ${log.progress_value} / ${dailyTarget} ${ch.unit || 'units'}.`,
+    };
   },
 
   leaveChallenge(userId: number, challengeId: number) {

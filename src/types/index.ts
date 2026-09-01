@@ -61,12 +61,14 @@ export interface Habit {
   habit_type: 'binary' | 'quantitative';
   target_value: number;
   unit?: string | null;
+  target_unit?: string | null;
   frequency_type: 'daily' | 'weekdays' | 'weekends' | 'custom_days' | 'times_per_week';
   frequency_days: string;
   target_days_per_week: number;
   preferred_time: 'morning' | 'afternoon' | 'evening' | 'anytime';
   time_of_day?: 'morning' | 'afternoon' | 'evening' | 'anytime';
   reminder_time?: string | null;
+  reminder_enabled?: boolean;
   difficulty: 'easy' | 'medium' | 'hard';
   is_paused: boolean;
   is_archived: boolean;

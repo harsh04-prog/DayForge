@@ -6,6 +6,7 @@ import { Button } from '../common/Button';
 import { HabitIcon, AVAILABLE_ICONS } from '../common/IconHelper';
 import { Habit } from '../../types';
 import { useHabits } from '../../context/HabitContext';
+import { Bell } from 'lucide-react';
 
 interface HabitModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   General: '#6C5CE7',
 };
 
-const COMMON_UNITS = ['pages', 'min', 'hours', 'L', 'reps', 'steps', 'glasses', 'tasks'];
+const COMMON_UNITS = ['glasses', 'steps', 'pages', 'min', 'hours', 'L', 'reps', 'times', 'tasks', 'sessions'];
 
 export const HabitModal: React.FC<HabitModalProps> = ({
   isOpen,
@@ -51,30 +52,36 @@ export const HabitModal: React.FC<HabitModalProps> = ({
   const [icon, setIcon] = useState('sparkles');
   const [category, setCategory] = useState('General');
   const [habitType, setHabitType] = useState<'binary' | 'quantitative'>('binary');
-  const [targetValue, setTargetValue] = useState<number>(1);
-  const [unit, setUnit] = useState('');
+  const [targetValue, setTargetValue] = useState<number | string>(1);
+  const [unit, setUnit] = useState('times');
   const [frequencyType, setFrequencyType] = useState<'daily' | 'weekdays' | 'weekends' | 'custom_days' | 'times_per_week'>('daily');
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [preferredTime, setPreferredTime] = useState<'morning' | 'afternoon' | 'evening' | 'anytime'>('anytime');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState('08:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (habitToEdit) {
-      setName(habitToEdit.name);
+      setName(habitToEdit.name || habitToEdit.title || '');
       setDescription(habitToEdit.description || '');
       setIcon(habitToEdit.icon || 'sparkles');
       setCategory(habitToEdit.category || 'General');
-      setHabitType(habitToEdit.habit_type || 'binary');
-      setTargetValue(habitToEdit.target_value || 1);
-      setUnit(habitToEdit.unit || '');
+      const isQuant = habitToEdit.habit_type === 'quantitative' || (habitToEdit.target_value && habitToEdit.target_value > 1);
+      setHabitType(isQuant ? 'quantitative' : 'binary');
+      setTargetValue(habitToEdit.target_value ?? 1);
+      setUnit(habitToEdit.unit || habitToEdit.target_unit || (isQuant ? 'glasses' : 'times'));
       setFrequencyType(habitToEdit.frequency_type || 'daily');
-      setPreferredTime(habitToEdit.preferred_time || 'anytime');
+      setPreferredTime((habitToEdit.preferred_time || habitToEdit.time_of_day || 'anytime') as any);
       setDifficulty(habitToEdit.difficulty || 'medium');
+      setReminderEnabled(Boolean(habitToEdit.reminder_enabled || habitToEdit.reminder_time));
+      setReminderTime(habitToEdit.reminder_time || '08:00');
+
       if (habitToEdit.frequency_days) {
         try {
-          setSelectedDays(habitToEdit.frequency_days.split(',').map((x) => parseInt(x.trim())));
+          setSelectedDays(habitToEdit.frequency_days.split(',').map((x) => parseInt(x.trim(), 10)));
         } catch {
           setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
         }
@@ -86,11 +93,13 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       setCategory('General');
       setHabitType('binary');
       setTargetValue(1);
-      setUnit('');
+      setUnit('times');
       setFrequencyType('daily');
       setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
       setPreferredTime('anytime');
       setDifficulty('medium');
+      setReminderEnabled(false);
+      setReminderTime('08:00');
     }
     setError('');
   }, [habitToEdit, isOpen]);
@@ -105,6 +114,19 @@ export const HabitModal: React.FC<HabitModalProps> = ({
     }
   };
 
+  const handleHabitTypeSwitch = (type: 'binary' | 'quantitative') => {
+    setHabitType(type);
+    if (type === 'binary') {
+      setTargetValue(1);
+      setUnit('times');
+    } else {
+      if (targetValue === 1 || targetValue === '1') {
+        setTargetValue(8);
+        setUnit('glasses');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -112,22 +134,35 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       return;
     }
 
+    const parsedTarget = Number(targetValue);
+    if (isNaN(parsedTarget) || parsedTarget <= 0) {
+      setError('Please enter a valid target amount greater than 0.');
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
-    const payload: Partial<Habit> = {
+    const isQuantitative = habitType === 'quantitative' || parsedTarget > 1;
+
+    const payload: any = {
+      title: name.trim(),
       name: name.trim(),
       description: description.trim() || undefined,
       icon,
       color: CATEGORY_COLORS[category] || '#6C5CE7',
       category,
-      habit_type: habitType,
-      target_value: habitType === 'quantitative' ? Number(targetValue) || 1 : 1,
-      unit: habitType === 'quantitative' ? unit.trim() || 'units' : undefined,
+      habit_type: isQuantitative ? 'quantitative' : 'binary',
+      target_value: parsedTarget,
+      target_unit: isQuantitative ? (unit.trim() || 'units') : (unit.trim() || 'times'),
+      unit: isQuantitative ? (unit.trim() || 'units') : (unit.trim() || 'times'),
       frequency_type: frequencyType,
       frequency_days: frequencyType === 'custom_days' ? selectedDays.join(',') : '0,1,2,3,4,5,6',
       preferred_time: preferredTime,
+      time_of_day: preferredTime,
       difficulty,
+      reminder_enabled: reminderEnabled,
+      reminder_time: reminderEnabled ? reminderTime : undefined,
     };
 
     try {
@@ -138,7 +173,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save habit.');
+      setError(err.response?.data?.detail || 'Failed to save habit. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -156,20 +191,20 @@ export const HabitModal: React.FC<HabitModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="bg-rose-50  border border-rose-200  text-rose-600  text-xs font-bold p-3 rounded-2xl">
-            {error}
+          <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold p-3.5 rounded-2xl flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
         {/* Name & Icon Row */}
         <div>
-          <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
             Habit Name & Icon
           </label>
           <div className="flex gap-2.5">
-            {/* Icon Picker button */}
             <div className="relative group">
-              <div className="w-11 h-11 rounded-2xl bg-slate-100  border border-slate-200  flex items-center justify-center text-[#6C5CE7]  shadow-xs">
+              <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#6C5CE7] shadow-xs">
                 <HabitIcon name={icon} className="w-6 h-6" />
               </div>
             </div>
@@ -178,8 +213,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Read 20 Pages, Morning Workout, Meditate..."
-              className="flex-1 px-4 py-2.5 bg-slate-50  border border-slate-200  rounded-2xl text-sm font-bold text-slate-900  focus:outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20 transition-all placeholder:text-slate-400"
+              placeholder="e.g. Drink 8 Glasses Water, Morning 30m Workout, Read 20 Pages..."
+              className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20 transition-all placeholder:text-slate-400"
               maxLength={100}
               required
             />
@@ -188,8 +223,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
         {/* Icon selector strip */}
         <div>
-          <span className="block text-xs font-bold text-slate-500  mb-2">Select Icon</span>
-          <div className="flex flex-wrap gap-2 p-2 bg-slate-50  border border-slate-200/80  rounded-2xl max-h-24 overflow-y-auto no-scrollbar">
+          <span className="block text-xs font-bold text-slate-500 mb-2">Select Icon</span>
+          <div className="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-24 overflow-y-auto no-scrollbar">
             {AVAILABLE_ICONS.map((ic) => (
               <button
                 type="button"
@@ -198,7 +233,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                 className={`p-2 rounded-xl transition-all ${
                   icon === ic
                     ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/20 scale-105 font-black'
-                    : 'text-slate-500 hover:text-slate-900  hover:bg-slate-200 '
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
                 }`}
               >
                 <HabitIcon name={ic} className="w-4 h-4" />
@@ -210,16 +245,16 @@ export const HabitModal: React.FC<HabitModalProps> = ({
         {/* Category & Difficulty */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50  border border-slate-200  rounded-2xl text-sm font-semibold text-slate-800  focus:outline-none focus:border-[#6C5CE7]"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
             >
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat} className="bg-white  text-slate-900 ">
+                <option key={cat} value={cat} className="bg-white text-slate-900">
                   {cat}
                 </option>
               ))}
@@ -227,10 +262,10 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
               Difficulty & Reward
             </label>
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100  border border-slate-200  rounded-2xl">
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 border border-slate-200 rounded-2xl">
               {(['easy', 'medium', 'hard'] as const).map((diff) => (
                 <button
                   type="button"
@@ -238,8 +273,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                   onClick={() => setDifficulty(diff)}
                   className={`py-1.5 text-xs font-bold rounded-xl capitalize transition-all ${
                     difficulty === diff
-                      ? 'bg-white  text-[#6C5CE7]  shadow-xs font-black'
-                      : 'text-slate-500 hover:text-slate-900 '
+                      ? 'bg-white text-[#6C5CE7] shadow-xs font-black'
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   {diff} ({diff === 'easy' ? '+5' : diff === 'medium' ? '+10' : '+15'} XP)
@@ -249,112 +284,116 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
         </div>
 
-        {/* Habit Type (Binary vs Quantitative) */}
+        {/* Target Mode & Custom User-Defined Amount */}
         <div>
-          <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
-            Target Type
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            Target & Daily Goal
           </label>
           <div className="grid grid-cols-2 gap-3 mb-3">
             <button
               type="button"
-              onClick={() => setHabitType('binary')}
+              onClick={() => handleHabitTypeSwitch('binary')}
               className={`p-3 rounded-2xl border text-left transition-all ${
                 habitType === 'binary'
-                  ? 'border-[#6C5CE7] bg-[#6C5CE7]/10  shadow-xs'
-                  : 'border-slate-200  bg-slate-50  hover:bg-slate-100 '
+                  ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-xs'
+                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold text-sm text-slate-900 ">Simple Yes/No</div>
-              <div className="text-xs text-slate-500  mt-0.5">e.g. Floss teeth, Take vitamins</div>
+              <div className="font-bold text-sm text-slate-900">Simple Yes/No</div>
+              <div className="text-xs text-slate-500 mt-0.5">1 completion per day</div>
             </button>
 
             <button
               type="button"
-              onClick={() => setHabitType('quantitative')}
+              onClick={() => handleHabitTypeSwitch('quantitative')}
               className={`p-3 rounded-2xl border text-left transition-all ${
                 habitType === 'quantitative'
-                  ? 'border-[#6C5CE7] bg-[#6C5CE7]/10  shadow-xs'
-                  : 'border-slate-200  bg-slate-50  hover:bg-slate-100 '
+                  ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-xs'
+                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold text-sm text-slate-900 ">Measure Amount</div>
-              <div className="text-xs text-slate-500  mt-0.5">e.g. 20 pages, 30 min, 2.5L</div>
+              <div className="font-bold text-sm text-slate-900">Measure Amount</div>
+              <div className="text-xs text-slate-500 mt-0.5">e.g. 8 glasses, 5000 steps, 30 min</div>
             </button>
           </div>
 
-          {habitType === 'quantitative' && (
-            <div className="flex gap-3 p-3.5 bg-slate-50  border border-slate-200  rounded-2xl">
-              <div className="w-1/2">
-                <span className="text-xs font-bold text-slate-700  block mb-1">Target Amount</span>
-                <input
-                  type="number"
-                  step="any"
-                  min="0.1"
-                  value={targetValue}
-                  onChange={(e) => setTargetValue(parseFloat(e.target.value) || 1)}
-                  className="w-full px-3 py-2 bg-white  border border-slate-200  rounded-xl text-sm font-bold text-slate-900  focus:outline-none focus:border-[#6C5CE7]"
-                  required
-                />
-              </div>
-              <div className="w-1/2">
-                <span className="text-xs font-bold text-slate-700  block mb-1">Unit</span>
-                <input
-                  type="text"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  placeholder="e.g. pages, min, L"
-                  className="w-full px-3 py-2 bg-white  border border-slate-200  rounded-xl text-sm font-medium text-slate-900  focus:outline-none focus:border-[#6C5CE7]"
-                  list="unit-suggestions"
-                  required
-                />
-                <datalist id="unit-suggestions">
-                  {COMMON_UNITS.map((u) => (
-                    <option key={u} value={u} />
-                  ))}
-                </datalist>
-              </div>
+          {/* User-defined Target Inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Daily Target Amount
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="0.1"
+                value={targetValue}
+                onChange={(e) => setTargetValue(e.target.value)}
+                placeholder="e.g. 8, 30, 5000, 2.5"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                required
+              />
             </div>
-          )}
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Unit of Measurement
+              </label>
+              <input
+                type="text"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="e.g. glasses, steps, min, pages, L"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                list="unit-suggestions"
+                required
+              />
+              <datalist id="unit-suggestions">
+                {COMMON_UNITS.map((u) => (
+                  <option key={u} value={u} />
+                ))}
+              </datalist>
+            </div>
+          </div>
         </div>
 
         {/* Frequency & Time */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
               Frequency
             </label>
             <select
               value={frequencyType}
               onChange={(e) => setFrequencyType(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 bg-slate-50  border border-slate-200  rounded-2xl text-sm font-semibold text-slate-800  focus:outline-none focus:border-[#6C5CE7]"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
             >
-              <option value="daily" className="bg-white  text-slate-900 ">Every Day</option>
-              <option value="weekdays" className="bg-white  text-slate-900 ">Weekdays (Mon-Fri)</option>
-              <option value="weekends" className="bg-white  text-slate-900 ">Weekends (Sat-Sun)</option>
-              <option value="custom_days" className="bg-white  text-slate-900 ">Specific Days of Week</option>
+              <option value="daily" className="bg-white text-slate-900">Every Day</option>
+              <option value="weekdays" className="bg-white text-slate-900">Weekdays (Mon-Fri)</option>
+              <option value="weekends" className="bg-white text-slate-900">Weekends (Sat-Sun)</option>
+              <option value="custom_days" className="bg-white text-slate-900">Specific Days of Week</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
               Preferred Time
             </label>
             <select
               value={preferredTime}
               onChange={(e) => setPreferredTime(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 bg-slate-50  border border-slate-200  rounded-2xl text-sm font-semibold text-slate-800  focus:outline-none focus:border-[#6C5CE7]"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
             >
-              <option value="anytime" className="bg-white  text-slate-900 ">Anytime</option>
-              <option value="morning" className="bg-white  text-slate-900 ">Morning</option>
-              <option value="afternoon" className="bg-white  text-slate-900 ">Afternoon</option>
-              <option value="evening" className="bg-white  text-slate-900 ">Evening</option>
+              <option value="anytime" className="bg-white text-slate-900">Anytime</option>
+              <option value="morning" className="bg-white text-slate-900">Morning</option>
+              <option value="afternoon" className="bg-white text-slate-900">Afternoon</option>
+              <option value="evening" className="bg-white text-slate-900">Evening</option>
             </select>
           </div>
         </div>
 
         {frequencyType === 'custom_days' && (
           <div>
-            <span className="block text-xs font-bold text-slate-700  mb-2">Select Active Days</span>
+            <span className="block text-xs font-bold text-slate-700 mb-2">Select Active Days</span>
             <div className="flex gap-2">
               {dayLabels.map((label, idx) => {
                 const isSelected = selectedDays.includes(idx);
@@ -366,7 +405,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${
                       isSelected
                         ? 'bg-[#6C5CE7] text-white shadow-xs font-black'
-                        : 'bg-slate-100  border border-slate-200  text-slate-500 hover:text-slate-900 '
+                        : 'bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-900'
                     }`}
                   >
                     {label}
@@ -377,9 +416,40 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
         )}
 
+        {/* Reminder Time Schedule */}
+        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-[#6C5CE7]" />
+              <span className="text-xs font-bold text-slate-900">Daily Reminder Notification</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={reminderEnabled}
+                onChange={(e) => setReminderEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6C5CE7]"></div>
+            </label>
+          </div>
+
+          {reminderEnabled && (
+            <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-3">
+              <span className="text-xs text-slate-600 font-medium">Notification Time</span>
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Description */}
         <div>
-          <label className="block text-xs font-bold text-slate-700  uppercase tracking-wider mb-2">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
             Why this habit matters (Optional)
           </label>
           <textarea
@@ -387,16 +457,16 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             onChange={(e) => setDescription(e.target.value)}
             placeholder="e.g. Read 20 pages every evening to expand knowledge and wind down before sleep."
             rows={2}
-            className="w-full px-3.5 py-2.5 bg-slate-50  border border-slate-200  rounded-2xl text-sm font-semibold text-slate-900  focus:outline-none focus:border-[#6C5CE7] placeholder:text-slate-400"
+            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7] placeholder:text-slate-400"
           />
         </div>
 
         {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 ">
-          <Button type="button" variant="ghost" onClick={onClose}>
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <Button type="button" variant="ghost" onClick={onClose} className="min-h-[44px]">
             Cancel
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSubmitting} className="font-black">
+          <Button type="submit" variant="primary" isLoading={isSubmitting} className="font-black min-h-[44px] px-6">
             {habitToEdit ? 'Save Changes' : 'Create Habit'}
           </Button>
         </div>
@@ -404,5 +474,3 @@ export const HabitModal: React.FC<HabitModalProps> = ({
     </Modal>
   );
 };
-
-

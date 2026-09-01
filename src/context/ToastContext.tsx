@@ -20,6 +20,7 @@ interface ToastContextType {
   showXPToast: (amount: number, message?: string) => void;
   showSuccess: (title: string, message?: string) => void;
   showError: (title: string, message?: string) => void;
+  showInfo: (title: string, message?: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -60,8 +61,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast({ type: 'error', title, message: message || 'Something went wrong.' });
   }, [showToast]);
 
+  const showInfo = useCallback((title: string, message?: string) => {
+    showToast({ type: 'info', title, message });
+  }, [showToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast, showXPToast, showSuccess, showError }}>
+    <ToastContext.Provider value={{ showToast, showXPToast, showSuccess, showError, showInfo }}>
       {children}
       <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
         <AnimatePresence>
