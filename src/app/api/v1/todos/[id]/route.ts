@@ -8,6 +8,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const resolvedParams = await params;
   const todoId = parseInt(resolvedParams.id, 10);
+  if (isNaN(todoId)) {
+    return NextResponse.json({ detail: 'Invalid task ID.' }, { status: 400 });
+  }
+
+  const existingTodo = db.getTodoById(todoId);
+  if (!existingTodo || Number(existingTodo.user_id) !== Number(userId)) {
+    return NextResponse.json({ detail: 'Task not found.' }, { status: 404 });
+  }
 
   try {
     const body = await request.json();
@@ -28,6 +36,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const resolvedParams = await params;
   const todoId = parseInt(resolvedParams.id, 10);
+  if (isNaN(todoId)) {
+    return NextResponse.json({ detail: 'Invalid task ID.' }, { status: 400 });
+  }
+
+  const existingTodo = db.getTodoById(todoId);
+  if (!existingTodo || Number(existingTodo.user_id) !== Number(userId)) {
+    return NextResponse.json({ detail: 'Task not found.' }, { status: 404 });
+  }
 
   const deleted = db.deleteTodo(todoId);
   if (!deleted) {

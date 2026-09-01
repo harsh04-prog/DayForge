@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { DayForgeLogo } from '../common/DayForgeLogo';
 import { Menu, X } from 'lucide-react';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 interface NavbarProps {
   onMobileMenuToggle?: () => void;
@@ -15,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isMobileMenuOpen = false,
 }) => {
   return (
-    // Only rendered on mobile devices (< lg). On desktop, the sidebar provides complete navigation and profile access.
+    // Only rendered on mobile devices (< lg). On desktop, the topbar and sidebar provide complete navigation and profile access.
     <header className="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14 sm:h-16">
@@ -34,8 +35,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <DayForgeLogo size="md" />
           </Link>
 
-          {/* Right Spacer for balanced centering */}
-          <div className="w-11 h-11" />
+          {/* Right: Companion Notification Center */}
+          <div className="w-11 h-11 flex items-center justify-center">
+            <NotificationBell />
+          </div>
         </div>
       </div>
     </header>

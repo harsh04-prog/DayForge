@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dayforge-cache-v1.1.0';
+const CACHE_NAME = 'dayforge-cache-v1.2.0';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -12,21 +12,20 @@ const STATIC_ASSETS = [
   '/icons/favicon-16x16.png',
 ];
 
-// 1. Install event: Pre-cache core shell
+// 1. Install event: Pre-cache core shell & skip waiting immediately
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
       .catch((err) => {
         console.warn('DayForge SW pre-cache partial warning:', err);
-        return self.skipWaiting();
       })
   );
 });
 
-// 2. Activate event: Purge outdated caches and claim clients immediately
+// 2. Activate event: Purge outdated caches and claim all clients immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -87,12 +86,12 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Web Push Notification Event Handler (PWA & Android Support)
+// 4. Web Push Notification Event Handler (Real System-Level Push with Sound & Vibration)
 self.addEventListener('push', (event) => {
   let data = {
     title: 'DayForge Habit Reminder ⚡',
     message: 'Time to check in on your habits and keep your streak alive!',
-    icon: '/dayforge-favicon.png',
+    icon: '/icons/icon-192x192.png',
     url: '/',
   };
 
@@ -107,11 +106,16 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'DayForge Habit Reminder ⚡';
   const options = {
     body: data.message || data.body || 'Time to level up your discipline.',
-    icon: data.icon || '/dayforge-favicon.png',
+    icon: data.icon || '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
-    vibrate: [100, 50, 100],
+    vibrate: [200, 100, 200, 100, 200], // Mobile vibration pattern
+    tag: data.tag || `dayforge-alert-${Date.now()}`,
+    renotify: true,
+    requireInteraction: false,
+    silent: false, // Ensures default notification audio plays on Android/iOS
     data: {
       url: data.action_url || data.url || '/',
+      dateOfArrival: Date.now(),
     },
     actions: [
       { action: 'open', title: 'Open DayForge' },
@@ -136,6 +140,9 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
+          if ('navigate' in client && targetUrl !== '/') {
+            client.navigate(targetUrl);
+          }
           return client.focus();
         }
       }
@@ -148,7 +155,7 @@ self.addEventListener('notificationclick', (event) => {
 
 // 6. Manual Skip Waiting Listener for PWA Instant Update
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting')) {
     self.skipWaiting();
   }
 });

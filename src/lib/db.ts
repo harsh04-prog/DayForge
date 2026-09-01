@@ -1387,10 +1387,16 @@ export const db = {
     return newRecord;
   },
 
+  getTodoById(id: number): TodoRecord | undefined {
+    const data = loadDB();
+    if (!data.todos) data.todos = [];
+    return data.todos.find((t) => Number(t.id) === Number(id));
+  },
+
   updateTodo(id: number, updates: Partial<TodoRecord>): TodoRecord | null {
     const data = loadDB();
     if (!data.todos) data.todos = [];
-    const idx = data.todos.findIndex((t) => t.id === id);
+    const idx = data.todos.findIndex((t) => Number(t.id) === Number(id));
     if (idx === -1) return null;
     const current = data.todos[idx];
     const now = new Date().toISOString();
@@ -1417,7 +1423,7 @@ export const db = {
   toggleTodo(id: number): TodoRecord | null {
     const data = loadDB();
     if (!data.todos) data.todos = [];
-    const idx = data.todos.findIndex((t) => t.id === id);
+    const idx = data.todos.findIndex((t) => Number(t.id) === Number(id));
     if (idx === -1) return null;
     const current = data.todos[idx];
     const now = new Date().toISOString();
@@ -1436,7 +1442,7 @@ export const db = {
   deleteTodo(id: number): boolean {
     const data = loadDB();
     if (!data.todos) data.todos = [];
-    const idx = data.todos.findIndex((t) => t.id === id);
+    const idx = data.todos.findIndex((t) => Number(t.id) === Number(id));
     if (idx === -1) return false;
     data.todos.splice(idx, 1);
     saveDB(data);

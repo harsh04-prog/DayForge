@@ -97,7 +97,7 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateTodo = async (id: number, data: Partial<TodoItem>): Promise<TodoItem> => {
     try {
       const res = await api.put<TodoItem>(`/todos/${id}`, data);
-      setTodos((prev) => prev.map((t) => (t.id === id ? res.data : t)));
+      setTodos((prev) => prev.map((t) => (Number(t.id) === Number(id) ? res.data : t)));
       showSuccess('Task Updated', 'Task changes saved.');
       await fetchTodos();
       return res.data;
@@ -109,11 +109,11 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleTodo = async (id: number) => {
     // Optimistic toggle
-    const currentTodo = todos.find((t) => t.id === id);
+    const currentTodo = todos.find((t) => Number(t.id) === Number(id));
     const newCompleted = currentTodo ? !currentTodo.completed : true;
 
     setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: newCompleted } : t))
+      prev.map((t) => (Number(t.id) === Number(id) ? { ...t, completed: newCompleted } : t))
     );
 
     if (newCompleted) {
@@ -139,7 +139,7 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteTodo = async (id: number) => {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
+    setTodos((prev) => prev.filter((t) => Number(t.id) !== Number(id)));
     try {
       await api.delete(`/todos/${id}`);
       showSuccess('Task Deleted', 'Task removed from your list.');

@@ -89,16 +89,32 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
     });
 
-    // Check for SW updates periodically and on visibility change
+    // Auto-reload on controllerchange so new deployments take effect seamlessly
+    let refreshing = false;
+    const handleControllerChange = () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    }
+
+    // Check for SW updates on load, periodically, and on visibility change
     const checkSWUpdate = () => {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then((reg) => {
           reg.update().catch(() => {});
-        });
+        }).catch(() => {});
       }
     };
 
-    const updateInterval = setInterval(checkSWUpdate, 15 * 60 * 1000); // every 15 mins
+    // Check after 2s on initial launch
+    const initialCheckTimer = setTimeout(checkSWUpdate, 2000);
+    const updateInterval = setInterval(checkSWUpdate, 5 * 60 * 1000); // every 5 mins
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         checkSWUpdate();
@@ -112,7 +128,11 @@ export const PWAProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(initialCheckTimer);
       clearInterval(updateInterval);
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+      }
     };
   }, []);
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { MobileBottomNav } from './MobileBottomNav';
+import { NotificationBell } from '../notifications/NotificationBell';
 
 export const AppLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,6 +39,20 @@ export const AppLayout: React.FC<{ children?: React.ReactNode }> = ({ children }
             isMobileMenuOpen={isMobileMenuOpen}
             onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           />
+
+          {/* Desktop Top Header with Notification Bell */}
+          <header className="hidden lg:flex items-center justify-between px-8 py-3 bg-white/80 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-30">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                DayForge Focus
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <NotificationBell />
+            </div>
+          </header>
+
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
             {children}
           </main>

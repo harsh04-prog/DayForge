@@ -103,22 +103,31 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (Notification.permission !== 'granted') return;
 
     try {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+      if ('serviceWorker' in navigator) {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(title, {
           body: message,
-          icon: '/dayforge-favicon.png',
+          icon: '/icons/icon-192x192.png',
           badge: '/icons/icon-192x192.png',
-          vibrate: [100, 50, 100],
-          tag: `dayforge-${Date.now()}`,
+          vibrate: [200, 100, 200, 100, 200], // Full mobile vibration pattern
+          tag: `dayforge-alert-${Date.now()}`,
+          renotify: true,
+          silent: false, // Ensures default Android/iOS notification audio chime plays
+          requireInteraction: false,
           data: {
             url: actionUrl || '/',
+            dateOfArrival: Date.now(),
           },
+          actions: [
+            { action: 'open', title: 'Open DayForge' },
+            { action: 'dismiss', title: 'Dismiss' },
+          ],
         } as any);
       } else {
         new Notification(title, {
           body: message,
-          icon: '/dayforge-favicon.png',
+          icon: '/icons/icon-192x192.png',
+          silent: false,
         });
       }
     } catch (e) {
@@ -129,10 +138,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const markAsRead = async (id: number) => {
     try {
       await api.post(`/notifications/${id}/read`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => Number(n.id) !== Number(id)));
       await fetchBudget();
     } catch {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => Number(n.id) !== Number(id)));
     }
   };
 
@@ -150,17 +159,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const dismissNotification = async (id: number) => {
     try {
       await api.post(`/notifications/${id}/dismiss`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => Number(n.id) !== Number(id)));
       await fetchBudget();
     } catch {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => Number(n.id) !== Number(id)));
     }
   };
 
   const snoozeNotification = async (id: number, minutes: number) => {
     try {
       await api.post(`/notifications/${id}/snooze`, { minutes });
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => Number(n.id) !== Number(id)));
       showSuccess('Reminder Snoozed', `We'll remind you in ${minutes} minutes.`);
       await fetchBudget();
     } catch {
@@ -172,7 +181,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       const res = await api.post(`/notifications/${id}/complete`);
       soundEffects.playComplete();
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => Number(n.id) !== Number(id)));
       showSuccess('Action Done!', res.data.message || 'Progress logged successfully.');
       await fetchBudget();
     } catch (err: any) {
@@ -192,11 +201,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       soundEffects.playComplete();
       if (res.data) {
-        setNotifications((prev) => [res.data, ...prev.filter((n) => n.id !== res.data.id)]);
+        setNotifications((prev) => [res.data, ...prev.filter((n) => Number(n.id) !== Number(res.data.id))]);
       }
       await fetchBudget();
 
-      // Show Service Worker / Native Push
+      // Show Service Worker / Native Push with sound & vibration
       await showLocalSmartNotification(
         res.data?.title || smartQuote.title,
         res.data?.message || smartQuote.message,
@@ -224,7 +233,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         showSuccess('Notifications Enabled 🔔', 'Personalized DayForge habit reminders are active.');
         await showLocalSmartNotification(
           'DayForge Reminders Active ⚡',
-          'You will now receive gentle smart habit check-ins and streak updates!',
+          'Paani piya kya? 💧 Habit check-ins and streak updates are now active!',
           'zap',
           '/'
         );
