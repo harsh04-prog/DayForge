@@ -189,23 +189,23 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       description="Build real momentum with a focused, sustainable routine."
       maxWidth="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
         {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold p-3.5 rounded-2xl flex items-center gap-2">
+          <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs font-bold p-3 sm:p-3.5 rounded-2xl flex items-center gap-2">
             <span>⚠️</span>
-            <span>{error}</span>
+            <span className="flex-1">{error}</span>
           </div>
         )}
 
         {/* Name & Icon Row */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+          <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Habit Name & Icon
           </label>
-          <div className="flex gap-2.5">
-            <div className="relative group">
-              <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#6C5CE7] shadow-xs">
-                <HabitIcon name={icon} className="w-6 h-6" />
+          <div className="flex gap-2">
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[#6C5CE7] shadow-xs">
+                <HabitIcon name={icon} className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
 
@@ -213,8 +213,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Drink 8 Glasses Water, Morning 30m Workout, Read 20 Pages..."
-              className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20 transition-all placeholder:text-slate-400"
+              placeholder="e.g. Drink Water, Gym Workout, Read Pages..."
+              className="flex-1 min-w-0 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 focus:outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20 transition-all placeholder:text-slate-400"
               maxLength={100}
               required
             />
@@ -223,8 +223,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
         {/* Icon selector strip */}
         <div>
-          <span className="block text-xs font-bold text-slate-500 mb-2">Select Icon</span>
-          <div className="flex flex-wrap gap-2 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-24 overflow-y-auto no-scrollbar">
+          <span className="block text-[11px] sm:text-xs font-bold text-slate-500 mb-1.5">Select Icon</span>
+          <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl max-h-24 overflow-y-auto no-scrollbar">
             {AVAILABLE_ICONS.map((ic) => (
               <button
                 type="button"
@@ -235,6 +235,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/20 scale-105 font-black'
                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
                 }`}
+                aria-label={`Select icon ${ic}`}
               >
                 <HabitIcon name={ic} className="w-4 h-4" />
               </button>
@@ -243,15 +244,15 @@ export const HabitModal: React.FC<HabitModalProps> = ({
         </div>
 
         {/* Category & Difficulty */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
+              className="w-full px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat} className="bg-white text-slate-900">
@@ -262,22 +263,22 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Difficulty & Reward
             </label>
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 border border-slate-200 rounded-2xl">
+            <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 border border-slate-200 rounded-2xl">
               {(['easy', 'medium', 'hard'] as const).map((diff) => (
                 <button
                   type="button"
                   key={diff}
                   onClick={() => setDifficulty(diff)}
-                  className={`py-1.5 text-xs font-bold rounded-xl capitalize transition-all ${
+                  className={`py-1.5 px-1 text-[11px] sm:text-xs font-bold rounded-xl capitalize transition-all truncate text-center ${
                     difficulty === diff
                       ? 'bg-white text-[#6C5CE7] shadow-xs font-black'
                       : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
-                  {diff} ({diff === 'easy' ? '+5' : diff === 'medium' ? '+10' : '+15'} XP)
+                  {diff} ({diff === 'easy' ? '+5' : diff === 'medium' ? '+10' : '+15'})
                 </button>
               ))}
             </div>
@@ -286,41 +287,41 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
         {/* Target Mode & Custom User-Defined Amount */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+          <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Target & Daily Goal
           </label>
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-2.5">
             <button
               type="button"
               onClick={() => handleHabitTypeSwitch('binary')}
-              className={`p-3 rounded-2xl border text-left transition-all ${
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all ${
                 habitType === 'binary'
                   ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-xs'
                   : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold text-sm text-slate-900">Simple Yes/No</div>
-              <div className="text-xs text-slate-500 mt-0.5">1 completion per day</div>
+              <div className="font-bold text-xs sm:text-sm text-slate-900">Simple Yes/No</div>
+              <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5">1 check-in per day</div>
             </button>
 
             <button
               type="button"
               onClick={() => handleHabitTypeSwitch('quantitative')}
-              className={`p-3 rounded-2xl border text-left transition-all ${
+              className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all ${
                 habitType === 'quantitative'
                   ? 'border-[#6C5CE7] bg-[#6C5CE7]/10 shadow-xs'
                   : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
               }`}
             >
-              <div className="font-bold text-sm text-slate-900">Measure Amount</div>
-              <div className="text-xs text-slate-500 mt-0.5">e.g. 8 glasses, 5000 steps, 30 min</div>
+              <div className="font-bold text-xs sm:text-sm text-slate-900">Measure Amount</div>
+              <div className="text-[10px] sm:text-xs text-slate-500 mt-0.5">e.g. 8 glasses, 5000 steps</div>
             </button>
           </div>
 
           {/* User-defined Target Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 sm:p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
+              <label className="text-[11px] sm:text-xs font-bold text-slate-700 block mb-1">
                 Daily Target Amount
               </label>
               <input
@@ -329,21 +330,21 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                 min="0.1"
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="e.g. 8, 30, 5000, 2.5"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                placeholder="e.g. 8, 30, 5000"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-black text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
                 required
               />
             </div>
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
+              <label className="text-[11px] sm:text-xs font-bold text-slate-700 block mb-1">
                 Unit of Measurement
               </label>
               <input
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
-                placeholder="e.g. glasses, steps, min, pages, L"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                placeholder="e.g. glasses, steps, min, pages"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
                 list="unit-suggestions"
                 required
               />
@@ -357,15 +358,15 @@ export const HabitModal: React.FC<HabitModalProps> = ({
         </div>
 
         {/* Frequency & Time */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Frequency
             </label>
             <select
               value={frequencyType}
               onChange={(e) => setFrequencyType(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
+              className="w-full px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
             >
               <option value="daily" className="bg-white text-slate-900">Every Day</option>
               <option value="weekdays" className="bg-white text-slate-900">Weekdays (Mon-Fri)</option>
@@ -375,13 +376,13 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
               Preferred Time
             </label>
             <select
               value={preferredTime}
               onChange={(e) => setPreferredTime(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
+              className="w-full px-3 py-2 sm:py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-[#6C5CE7]"
             >
               <option value="anytime" className="bg-white text-slate-900">Anytime</option>
               <option value="morning" className="bg-white text-slate-900">Morning</option>
@@ -391,10 +392,11 @@ export const HabitModal: React.FC<HabitModalProps> = ({
           </div>
         </div>
 
+        {/* Custom Days Grid */}
         {frequencyType === 'custom_days' && (
           <div>
-            <span className="block text-xs font-bold text-slate-700 mb-2">Select Active Days</span>
-            <div className="flex gap-2">
+            <span className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1.5">Select Active Days</span>
+            <div className="flex gap-1 sm:gap-1.5 justify-between">
               {dayLabels.map((label, idx) => {
                 const isSelected = selectedDays.includes(idx);
                 return (
@@ -402,7 +404,7 @@ export const HabitModal: React.FC<HabitModalProps> = ({
                     type="button"
                     key={idx}
                     onClick={() => toggleDay(idx)}
-                    className={`w-9 h-9 rounded-xl font-bold text-xs transition-all ${
+                    className={`flex-1 max-w-[42px] h-8 sm:h-9 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
                       isSelected
                         ? 'bg-[#6C5CE7] text-white shadow-xs font-black'
                         : 'bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-900'
@@ -417,11 +419,11 @@ export const HabitModal: React.FC<HabitModalProps> = ({
         )}
 
         {/* Reminder Time Schedule */}
-        <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+        <div className="p-3 sm:p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-[#6C5CE7]" />
-              <span className="text-xs font-bold text-slate-900">Daily Reminder Notification</span>
+              <span className="text-[11px] sm:text-xs font-bold text-slate-900">Daily Reminder Notification</span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -436,37 +438,37 @@ export const HabitModal: React.FC<HabitModalProps> = ({
 
           {reminderEnabled && (
             <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between gap-3">
-              <span className="text-xs text-slate-600 font-medium">Notification Time</span>
+              <span className="text-[11px] sm:text-xs text-slate-600 font-medium">Notification Time</span>
               <input
                 type="time"
                 value={reminderTime}
                 onChange={(e) => setReminderTime(e.target.value)}
-                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                className="px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
               />
             </div>
           )}
         </div>
 
-        {/* Description */}
+        {/* Motivation Description */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+          <label className="block text-[11px] sm:text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
             Why this habit matters (Optional)
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. Read 20 pages every evening to expand knowledge and wind down before sleep."
+            placeholder="e.g. Read 20 pages every evening to expand knowledge..."
             rows={2}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7] placeholder:text-slate-400"
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7] placeholder:text-slate-400"
           />
         </div>
 
-        {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-          <Button type="button" variant="ghost" onClick={onClose} className="min-h-[44px]">
+        {/* Action Buttons */}
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-3 pb-1 border-t border-slate-100 flex items-center justify-end gap-2.5 z-10">
+          <Button type="button" variant="ghost" onClick={onClose} className="min-h-[40px] text-xs sm:text-sm px-4">
             Cancel
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSubmitting} className="font-black min-h-[44px] px-6">
+          <Button type="submit" variant="primary" isLoading={isSubmitting} className="font-black min-h-[40px] text-xs sm:text-sm px-5 sm:px-6 shadow-md shadow-[#6C5CE7]/20">
             {habitToEdit ? 'Save Changes' : 'Create Habit'}
           </Button>
         </div>
