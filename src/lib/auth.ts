@@ -29,6 +29,19 @@ export interface VaultPayload {
   created_at: string;
 }
 
+export interface UserDataVaultPayload {
+  userId: number;
+  habits?: any[];
+  todos?: any[];
+  habit_logs?: any[];
+  profile?: any;
+  user_settings?: any;
+  user_challenges?: any[];
+  user_challenge_logs?: any[];
+  version: number;
+  timestamp: string;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(10);
   return bcrypt.hash(password, salt);
@@ -45,7 +58,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export function createAccessToken(
   user: { id: number; email?: string; username?: string; full_name?: string; is_active?: boolean; is_onboarded?: boolean },
-  expiresIn: string = '7d'
+  expiresIn: string = '30d'
 ): string {
   const payload: AuthTokenPayload = {
     sub: String(user.id),
@@ -95,6 +108,31 @@ export function verifyVaultToken(token: string): VaultPayload | null {
       is_active: decoded.is_active ?? true,
       is_onboarded: decoded.is_onboarded ?? false,
       created_at: decoded.created_at || new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function createUserDataVaultToken(payload: UserDataVaultPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '60d' });
+}
+
+export function verifyUserDataVaultToken(token: string): UserDataVaultPayload | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded || !decoded.userId) return null;
+    return {
+      userId: Number(decoded.userId),
+      habits: Array.isArray(decoded.habits) ? decoded.habits : [],
+      todos: Array.isArray(decoded.todos) ? decoded.todos : [],
+      habit_logs: Array.isArray(decoded.habit_logs) ? decoded.habit_logs : [],
+      profile: decoded.profile || null,
+      user_settings: decoded.user_settings || null,
+      user_challenges: Array.isArray(decoded.user_challenges) ? decoded.user_challenges : [],
+      user_challenge_logs: Array.isArray(decoded.user_challenge_logs) ? decoded.user_challenge_logs : [],
+      version: decoded.version || 1,
+      timestamp: decoded.timestamp || new Date().toISOString(),
     };
   } catch {
     return null;
@@ -153,6 +191,26 @@ export function getVaultFromRequest(request: Request): VaultPayload | null {
   }
 }
 
+export function getUserVaultDataFromRequest(request: Request): UserDataVaultPayload | null {
+  try {
+    const headerVault = request.headers.get('x-dayforge-vault-data');
+    if (headerVault) {
+      const verified = verifyUserDataVaultToken(headerVault);
+      if (verified) return verified;
+    }
+
+    const cookies = parseCookies(request);
+    if (cookies.dayforge_data_vault) {
+      const verified = verifyUserDataVaultToken(cookies.dayforge_data_vault);
+      if (verified) return verified;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function setAuthCookies(
   response: NextResponse,
   accessToken: string,
@@ -188,5 +246,6 @@ export function clearAuthCookies(response: NextResponse): NextResponse {
   };
   response.cookies.set('dayforge_session', '', clearOptions);
   response.cookies.set('dayforge_vault', '', clearOptions);
+  response.cookies.set('dayforge_data_vault', '', clearOptions);
   return response;
 }

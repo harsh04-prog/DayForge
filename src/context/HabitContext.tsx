@@ -41,52 +41,59 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { isAuthenticated, user, refreshSession } = useAuth();
   const { showXPToast, showSuccess, showError } = useToast();
 
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habits, setHabits] = useState<Habit[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dayforge_dashboard_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached) as DashboardData;
+          if (parsed && Array.isArray(parsed.habits)) return parsed.habits;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
   const [challenges, setChallenges] = useState<any[]>([]);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dayforge_dashboard_cache');
+        if (cached) return JSON.parse(cached) as DashboardData;
+      } catch {}
+    }
+    return null;
+  });
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
   const [levelUpModal, setLevelUpModal] = useState<{ show: boolean; level: number; title: string } | null>(null);
   const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null);
 
-  // Initialize cached data for ultra-fast instant UI rendering
-  useEffect(() => {
-    if (typeof window !== 'undefined' && isAuthenticated) {
-      try {
-        const cached = localStorage.getItem('dayforge_dashboard_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached) as DashboardData;
-          if (parsed && parsed.habits) {
-            setDashboardData(parsed);
-            setHabits(parsed.habits);
-          }
-        }
-      } catch {}
-    }
-  }, [isAuthenticated]);
-
   const fetchDashboard = useCallback(async () => {
-    if (!isAuthenticated) return;
     try {
       const res = await api.get<DashboardData>('/progress/dashboard');
-      setDashboardData(res.data);
-      setHabits(res.data.habits || []);
+      if (res.data) {
+        setDashboardData(res.data);
+        setHabits(res.data.habits || []);
 
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('dayforge_dashboard_cache', JSON.stringify(res.data));
-        } catch {}
-      }
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('dayforge_dashboard_cache', JSON.stringify(res.data));
+          } catch {}
+        }
 
-      if (res.data.unseen_achievements && res.data.unseen_achievements.length > 0) {
-        const firstUnseen = res.data.unseen_achievements[0];
-        setUnlockedAchievement(firstUnseen);
-        api.post('/progress/achievements/mark-seen');
+        if (res.data.unseen_achievements && res.data.unseen_achievements.length > 0) {
+          const firstUnseen = res.data.unseen_achievements[0];
+          setUnlockedAchievement(firstUnseen);
+          api.post('/progress/achievements/mark-seen');
+        }
       }
     } catch (err) {
       console.error('Failed to fetch dashboard', err);
     }
-  }, [isAuthenticated]);
+  }, []);
 
   const fetchChallenges = useCallback(async () => {
     if (!isAuthenticated) return;

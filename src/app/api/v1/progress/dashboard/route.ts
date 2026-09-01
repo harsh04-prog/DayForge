@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
 import { getLevelForXp } from '@/lib/gamification';
 import { formatDate } from '@/lib/streakEngine';
 
 export async function GET(request: Request) {
   const userId = getUserIdFromRequest(request);
   if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
+  // Reconcile client's vault data if container has missing data
+  const userVault = getUserVaultDataFromRequest(request);
+  if (userVault && Number(userVault.userId) === Number(userId)) {
+    db.syncUserDataFromVault(userId, userVault);
+  }
 
   const user = db.getUserById(userId);
   const profile = db.getProfileByUserId(userId);
@@ -48,7 +54,10 @@ export async function GET(request: Request) {
       : `${totalCompleted} of ${totalScheduled} habits completed today.`,
   };
 
-  return NextResponse.json({
+  const latestVaultData = db.getUserVaultData(userId);
+  const vaultToken = createUserDataVaultToken(latestVaultData);
+
+  const res = NextResponse.json({
     profile: profile || {
       id: 1,
       user_id: userId,
@@ -82,5 +91,9 @@ export async function GET(request: Request) {
     },
     unseen_achievements: [],
     recent_achievements: db.getAchievements(userId).filter((a) => a.unlocked).slice(0, 3),
+    vault_token: vaultToken,
   });
+
+  res.headers.set('x-dayforge-vault-token', vaultToken);
+  return res;
 }

@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getAuthUserFromRequest, setAuthCookies, createAccessToken } from '@/lib/auth';
+import {
+  getAuthUserFromRequest,
+  setAuthCookies,
+  createAccessToken,
+  getUserVaultDataFromRequest,
+  createUserDataVaultToken,
+} from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
@@ -19,9 +25,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ detail: 'User not found or inactive' }, { status: 401 });
     }
 
+    // Reconcile client's vault data if local instance has missing data
+    const userVault = getUserVaultDataFromRequest(request);
+    if (userVault && Number(userVault.userId) === Number(user.id)) {
+      db.syncUserDataFromVault(user.id, userVault);
+    }
+
     const profile = db.getProfileByUserId(user.id);
     const settings = db.getSettingsByUserId(user.id);
     const refreshedToken = createAccessToken(user, '30d');
+
+    const latestVaultData = db.getUserVaultData(user.id);
+    const vaultToken = createUserDataVaultToken(latestVaultData);
 
     const res = NextResponse.json({
       id: user.id,
@@ -33,7 +48,10 @@ export async function GET(request: Request) {
       created_at: user.created_at,
       profile,
       settings,
+      vault_token: vaultToken,
     });
+
+    res.headers.set('x-dayforge-vault-token', vaultToken);
 
     return setAuthCookies(res, refreshedToken, {
       id: user.id,

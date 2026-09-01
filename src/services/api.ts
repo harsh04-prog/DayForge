@@ -11,13 +11,19 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor for Bearer token
+// Request interceptor for Bearer token & client data vault header
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && config.headers) {
       const token = localStorage.getItem('dayforge_token');
-      if (token && config.headers) {
+      if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Attach client data vault token for cross-container serverless synchronization
+      const vaultData = localStorage.getItem('dayforge_data_vault');
+      if (vaultData) {
+        config.headers['x-dayforge-vault-data'] = vaultData;
       }
     }
     return config;
@@ -27,30 +33,23 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor with automatic retry on transient failures
+// Response interceptor with automatic retry on transient failures & vault token storage
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof window !== 'undefined') {
+      const vaultTokenFromHeader = response.headers?.['x-dayforge-vault-token'];
+      const vaultTokenFromBody = response.data?.vault_token;
+      const tokenToStore = vaultTokenFromHeader || vaultTokenFromBody;
+      if (tokenToStore && typeof tokenToStore === 'string') {
+        try {
+          localStorage.setItem('dayforge_data_vault', tokenToStore);
+        } catch {}
+      }
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const config = error.config as InternalAxiosRequestConfig & { _retryCount?: number };
-
-    // Handle 401 unauthenticated
-    if (
-      typeof window !== 'undefined' &&
-      error.response?.status === 401 &&
-      !config?.url?.includes('/auth/session') &&
-      !config?.url?.includes('/auth/login') &&
-      !config?.url?.includes('/auth/register')
-    ) {
-      if (
-        !window.location.pathname.startsWith('/login') &&
-        !window.location.pathname.startsWith('/welcome') &&
-        !window.location.pathname.startsWith('/register')
-      ) {
-        localStorage.removeItem('dayforge_token');
-        window.location.href = '/login';
-      }
-      return Promise.reject(error);
-    }
 
     // Auto-retry transient network errors or 500/502/503/504 up to 2 times
     if (config && (!error.response || (error.response.status >= 500 && error.response.status <= 504))) {

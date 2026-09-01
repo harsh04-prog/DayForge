@@ -24,9 +24,49 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedUser = localStorage.getItem('dayforge_user');
+        if (savedUser) return JSON.parse(savedUser);
+      } catch {}
+    }
+    return null;
+  });
+
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dayforge_token');
+    }
+    return null;
+  });
+
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedProfile = localStorage.getItem('dayforge_profile');
+        if (savedProfile) return JSON.parse(savedProfile);
+      } catch {}
+    }
+    return null;
+  });
+
+  const [settings, setSettings] = useState<UserSettings | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedSettings = localStorage.getItem('dayforge_settings');
+        if (savedSettings) return JSON.parse(savedSettings);
+      } catch {}
+    }
+    return null;
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return !localStorage.getItem('dayforge_token');
+    }
+    return false;
+  });
 
   const refreshSession = useCallback(async () => {
     if (typeof window === 'undefined') {
@@ -35,27 +75,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const savedToken = localStorage.getItem('dayforge_token');
+    if (!savedToken) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const response = await api.get<User>('/auth/session');
+      const response = await api.get<User & { profile?: Profile; settings?: UserSettings }>('/auth/session');
       if (response.data && response.data.id) {
         setUser(response.data);
-        if (!savedToken) {
-          setToken('cookie_session');
-        } else {
-          setToken(savedToken);
-        }
+        if (response.data.profile) setProfile(response.data.profile);
+        if (response.data.settings) setSettings(response.data.settings);
+        setToken(savedToken);
+
+        try {
+          localStorage.setItem('dayforge_user', JSON.stringify(response.data));
+          if (response.data.profile) localStorage.setItem('dayforge_profile', JSON.stringify(response.data.profile));
+          if (response.data.settings) localStorage.setItem('dayforge_settings', JSON.stringify(response.data.settings));
+        } catch {}
       } else {
         setUser(null);
         setToken(null);
+        setProfile(null);
+        setSettings(null);
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('dayforge_token');
+          localStorage.removeItem('dayforge_user');
         }
         setToken(null);
         setUser(null);
+        setProfile(null);
+        setSettings(null);
       }
     } finally {
       setIsLoading(false);

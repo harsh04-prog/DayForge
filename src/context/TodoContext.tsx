@@ -49,42 +49,71 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { isAuthenticated } = useAuth();
   const { showSuccess, showError, showXPToast } = useToast();
 
-  const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [stats, setStats] = useState<TodoStats>({ total: 0, pending: 0, today: 0, overdue: 0, completed: 0 });
+  const [todos, setTodos] = useState<TodoItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dayforge_todos_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+
+  const [stats, setStats] = useState<TodoStats>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('dayforge_todos_stats_cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return { total: 0, pending: 0, today: 0, overdue: 0, completed: 0 };
+  });
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const fetchTodos = useCallback(async () => {
-    if (!isAuthenticated) {
-      setTodos([]);
-      return;
-    }
-
     try {
       setIsLoading(true);
       const res = await api.get<{ todos: TodoItem[]; stats: TodoStats }>('/todos');
       if (res.data) {
         setTodos(res.data.todos || []);
         if (res.data.stats) setStats(res.data.stats);
+
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('dayforge_todos_cache', JSON.stringify(res.data.todos || []));
+            if (res.data.stats) {
+              localStorage.setItem('dayforge_todos_stats_cache', JSON.stringify(res.data.stats));
+            }
+          } catch {}
+        }
       }
     } catch {
       // Graceful fallback
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchTodos();
-    } else {
-      setTodos([]);
     }
   }, [isAuthenticated, fetchTodos]);
 
   const createTodo = async (data: Partial<TodoItem>): Promise<TodoItem> => {
     try {
       const res = await api.post<TodoItem>('/todos', data);
-      setTodos((prev) => [res.data, ...prev]);
+      setTodos((prev) => {
+        const updated = [res.data, ...prev];
+        try {
+          localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       showSuccess('Task Created', `"${res.data.title}" added to your to-do list.`);
       await fetchTodos();
       return res.data;
@@ -97,7 +126,13 @@ export const TodoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateTodo = async (id: number, data: Partial<TodoItem>): Promise<TodoItem> => {
     try {
       const res = await api.put<TodoItem>(`/todos/${id}`, data);
-      setTodos((prev) => prev.map((t) => (Number(t.id) === Number(id) ? res.data : t)));
+      setTodos((prev) => {
+        const updated = prev.map((t) => (Number(t.id) === Number(id) ? res.data : t));
+        try {
+          localStorage.setItem('dayforge_todos_cache', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       showSuccess('Task Updated', 'Task changes saved.');
       await fetchTodos();
       return res.data;

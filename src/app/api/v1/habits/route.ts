@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getUserIdFromRequest } from '@/lib/auth';
+import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
 import { formatDate } from '@/lib/streakEngine';
 
 export async function GET(request: Request) {
   const userId = getUserIdFromRequest(request);
   if (!userId) {
     return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Reconcile client vault if container has missing data
+  const userVault = getUserVaultDataFromRequest(request);
+  if (userVault && Number(userVault.userId) === Number(userId)) {
+    db.syncUserDataFromVault(userId, userVault);
   }
 
   const { searchParams } = new URL(request.url);
@@ -24,13 +30,24 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json(enrichedHabits);
+  const latestVaultData = db.getUserVaultData(userId);
+  const vaultToken = createUserDataVaultToken(latestVaultData);
+
+  const res = NextResponse.json(enrichedHabits);
+  res.headers.set('x-dayforge-vault-token', vaultToken);
+  return res;
 }
 
 export async function POST(request: Request) {
   const userId = getUserIdFromRequest(request);
   if (!userId) {
     return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Reconcile client vault if container has missing data
+  const userVault = getUserVaultDataFromRequest(request);
+  if (userVault && Number(userVault.userId) === Number(userId)) {
+    db.syncUserDataFromVault(userId, userVault);
   }
 
   try {
@@ -76,7 +93,12 @@ export async function POST(request: Request) {
       difficulty: body.difficulty || 'medium',
     });
 
-    return NextResponse.json(newHabit, { status: 201 });
+    const latestVaultData = db.getUserVaultData(userId);
+    const vaultToken = createUserDataVaultToken(latestVaultData);
+
+    const res = NextResponse.json(newHabit, { status: 201 });
+    res.headers.set('x-dayforge-vault-token', vaultToken);
+    return res;
   } catch (error: any) {
     console.error('Create habit error:', error);
     return NextResponse.json({ detail: 'Failed to create habit.' }, { status: 500 });

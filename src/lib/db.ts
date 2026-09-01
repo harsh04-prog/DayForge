@@ -1448,4 +1448,93 @@ export const db = {
     saveDB(data);
     return true;
   },
+
+  // ==========================================
+  // CROSS-CONTAINER DATA VAULT RECONCILIATION
+  // ==========================================
+  syncUserDataFromVault(userId: number, vault: any): void {
+    const data = loadDB();
+    const uid = Number(userId);
+    if (!uid || !vault) return;
+
+    let modified = false;
+
+    // 1. Sync habits
+    if (Array.isArray(vault.habits) && vault.habits.length > 0) {
+      if (!data.habits) data.habits = [];
+      vault.habits.forEach((vh: any) => {
+        const existingIdx = data.habits.findIndex((h) => Number(h.id) === Number(vh.id));
+        if (existingIdx === -1) {
+          data.habits.push({ ...vh, user_id: uid });
+          modified = true;
+        } else {
+          data.habits[existingIdx] = { ...data.habits[existingIdx], ...vh, user_id: uid };
+          modified = true;
+        }
+      });
+    }
+
+    // 2. Sync to-dos
+    if (Array.isArray(vault.todos) && vault.todos.length > 0) {
+      if (!data.todos) data.todos = [];
+      vault.todos.forEach((vt: any) => {
+        const existingIdx = data.todos.findIndex((t) => Number(t.id) === Number(vt.id));
+        if (existingIdx === -1) {
+          data.todos.push({ ...vt, user_id: uid });
+          modified = true;
+        } else {
+          data.todos[existingIdx] = { ...data.todos[existingIdx], ...vt, user_id: uid };
+          modified = true;
+        }
+      });
+    }
+
+    // 3. Sync habit logs
+    if (Array.isArray(vault.habit_logs) && vault.habit_logs.length > 0) {
+      if (!data.habit_logs) data.habit_logs = [];
+      vault.habit_logs.forEach((vl: any) => {
+        const existingIdx = data.habit_logs.findIndex(
+          (l) => Number(l.habit_id) === Number(vl.habit_id) && l.date === vl.date
+        );
+        if (existingIdx === -1) {
+          data.habit_logs.push({ ...vl, user_id: uid });
+          modified = true;
+        }
+      });
+    }
+
+    // 4. Sync profile
+    if (vault.profile) {
+      if (!data.profiles) data.profiles = [];
+      const pIdx = data.profiles.findIndex((p) => Number(p.user_id) === uid);
+      if (pIdx === -1) {
+        data.profiles.push({ ...vault.profile, user_id: uid });
+        modified = true;
+      } else {
+        data.profiles[pIdx] = { ...data.profiles[pIdx], ...vault.profile, user_id: uid };
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      saveDB(data);
+    }
+  },
+
+  getUserVaultData(userId: number): any {
+    const data = loadDB();
+    const uid = Number(userId);
+    return {
+      userId: uid,
+      habits: (data.habits || []).filter((h) => Number(h.user_id) === uid),
+      todos: (data.todos || []).filter((t) => Number(t.user_id) === uid),
+      habit_logs: (data.habit_logs || []).filter((l) => Number(l.user_id) === uid),
+      profile: (data.profiles || []).find((p) => Number(p.user_id) === uid) || null,
+      user_settings: (data.user_settings || []).find((s) => Number(s.user_id) === uid) || null,
+      user_challenges: (data.user_challenges || []).filter((c) => Number(c.user_id) === uid),
+      user_challenge_logs: (data.user_challenge_logs || []).filter((cl) => Number(cl.user_id) === uid),
+      version: Date.now(),
+      timestamp: new Date().toISOString(),
+    };
+  },
 };
