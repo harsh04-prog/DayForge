@@ -11,6 +11,7 @@ import { CelebrationModal, CelebrationData } from '../components/common/Celebrat
 
 interface HabitContextType {
   habits: Habit[];
+  challenges: any[];
   dashboardData: DashboardData | null;
   isLoading: boolean;
   unlockedAchievement: Achievement | null;
@@ -19,6 +20,10 @@ interface HabitContextType {
   dismissLevelUpModal: () => void;
   fetchHabits: () => Promise<void>;
   fetchDashboard: () => Promise<void>;
+  fetchChallenges: () => Promise<void>;
+  joinChallenge: (id: number) => Promise<any>;
+  leaveChallenge: (id: number) => Promise<any>;
+  checkinChallenge: (id: number, progress?: number, isAbsolute?: boolean) => Promise<any>;
   createHabit: (habitData: Partial<Habit>) => Promise<Habit>;
   updateHabit: (id: number, habitData: Partial<Habit>) => Promise<Habit>;
   deleteHabit: (id: number) => Promise<void>;
@@ -37,12 +42,12 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { showXPToast, showSuccess, showError } = useToast();
 
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [unlockedAchievement, setUnlockedAchievement] = useState<Achievement | null>(null);
   const [levelUpModal, setLevelUpModal] = useState<{ show: boolean; level: number; title: string } | null>(null);
   const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null);
-  const isFetchingRef = useRef(false);
 
   // Initialize cached data for ultra-fast instant UI rendering
   useEffect(() => {
@@ -61,9 +66,8 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [isAuthenticated]);
 
   const fetchDashboard = useCallback(async () => {
-    if (!isAuthenticated || isFetchingRef.current) return;
+    if (!isAuthenticated) return;
     try {
-      isFetchingRef.current = true;
       const res = await api.get<DashboardData>('/progress/dashboard');
       setDashboardData(res.data);
       setHabits(res.data.habits || []);
@@ -81,8 +85,18 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (err) {
       console.error('Failed to fetch dashboard', err);
-    } finally {
-      isFetchingRef.current = false;
+    }
+  }, [isAuthenticated]);
+
+  const fetchChallenges = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.get<any[]>('/challenges');
+      if (Array.isArray(res.data)) {
+        setChallenges(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch challenges', err);
     }
   }, [isAuthenticated]);
 
@@ -102,8 +116,78 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     if (isAuthenticated) {
       fetchDashboard();
+      fetchChallenges();
     }
-  }, [isAuthenticated, fetchDashboard]);
+  }, [isAuthenticated, fetchDashboard, fetchChallenges]);
+
+  const joinChallenge = async (id: number): Promise<any> => {
+    // Optimistic update for instant UI feedback
+    setChallenges((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, is_joined: true, status: 'active', current_day: 1, completed_days: 0, today_progress: 0, today_completed: false }
+          : c
+      )
+    );
+
+    try {
+      const res = await api.post(`/challenges/${id}/join`);
+      showSuccess('Challenge Joined! 🏆', res.data.message || 'You have joined the sprint!');
+      await Promise.all([fetchChallenges(), fetchDashboard()]);
+      return res.data;
+    } catch (err: any) {
+      await fetchChallenges();
+      showError('Error', err.response?.data?.detail || 'Failed to join challenge.');
+      throw err;
+    }
+  };
+
+  const leaveChallenge = async (id: number): Promise<any> => {
+    // Optimistic update for instant UI feedback
+    setChallenges((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, is_joined: false, status: 'available', current_day: 0, completed_days: 0, today_progress: 0, today_completed: false }
+          : c
+      )
+    );
+
+    try {
+      const res = await api.post(`/challenges/${id}/leave`);
+      showSuccess('Left Challenge', res.data.message || 'You have left the sprint.');
+      await Promise.all([fetchChallenges(), fetchDashboard()]);
+      return res.data;
+    } catch (err: any) {
+      await fetchChallenges();
+      showError('Error', err.response?.data?.detail || 'Failed to leave challenge.');
+      throw err;
+    }
+  };
+
+  const checkinChallenge = async (id: number, progress?: number, isAbsolute: boolean = false): Promise<any> => {
+    try {
+      const res = await api.post(`/challenges/${id}/checkin`, {
+        progress,
+        is_absolute: isAbsolute,
+      });
+
+      if (res.data.today_completed) {
+        soundEffects.playComplete();
+        confetti({
+          particleCount: 60,
+          spread: 60,
+          origin: { y: 0.7 },
+        });
+      }
+
+      showSuccess('Challenge Updated', res.data.message || 'Progress logged.');
+      await Promise.all([fetchChallenges(), fetchDashboard()]);
+      return res.data;
+    } catch (err: any) {
+      showError('Error', err.response?.data?.detail || "Couldn't update challenge progress.");
+      throw err;
+    }
+  };
 
   const createHabit = async (habitData: Partial<Habit>): Promise<Habit> => {
     const res = await api.post<Habit>('/habits/', habitData);
@@ -283,6 +367,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <HabitContext.Provider
       value={{
         habits,
+        challenges,
         dashboardData,
         isLoading,
         unlockedAchievement,
@@ -291,6 +376,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         dismissLevelUpModal,
         fetchHabits,
         fetchDashboard,
+        fetchChallenges,
+        joinChallenge,
+        leaveChallenge,
+        checkinChallenge,
         createHabit,
         updateHabit,
         deleteHabit,

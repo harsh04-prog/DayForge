@@ -18,27 +18,11 @@ import { api } from '@/services/api';
 
 export const DashboardPageContent: React.FC = () => {
   const { user } = useAuth();
-  const { dashboardData, fetchDashboard, habits } = useHabits();
+  const { dashboardData, fetchDashboard, habits, challenges, fetchChallenges } = useHabits();
   const [filter, setFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'completed'>('all');
   const [isNewHabitOpen, setIsNewHabitOpen] = useState(false);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
   const [greeting, setGreeting] = useState<string>('Welcome back');
-  const [challenges, setChallenges] = useState<any[]>([]);
-  const [loadingChallenges, setLoadingChallenges] = useState(false);
-
-  const fetchChallenges = useCallback(async () => {
-    try {
-      setLoadingChallenges(true);
-      const res = await api.get<any[]>('/challenges');
-      if (Array.isArray(res.data)) {
-        setChallenges(res.data);
-      }
-    } catch {
-      // Graceful fallback
-    } finally {
-      setLoadingChallenges(false);
-    }
-  }, []);
 
   useEffect(() => {
     fetchDashboard();

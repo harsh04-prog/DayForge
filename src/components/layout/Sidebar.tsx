@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   CheckSquare,
+  ListTodo,
   Trophy,
   BarChart2,
   Swords,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useHabits } from '../../context/HabitContext';
+import { useTodos } from '../../context/TodoContext';
 import { Avatar } from '../common/Avatar';
 import { DayForgeLogo } from '../common/DayForgeLogo';
 
@@ -28,6 +30,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, isMobileDrawer = false }) => {
   const { user, profile, logout } = useAuth();
   const { dashboardData } = useHabits();
+  const { stats } = useTodos();
   const pathname = usePathname();
 
   const streak = dashboardData?.active_streak || 0;
@@ -35,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, isMobileDrawer 
 
   const navItems = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/todos', label: 'To-Do List', icon: ListTodo, badge: stats.pending > 0 ? stats.pending : undefined },
     { to: '/habits', label: 'All Habits', icon: CheckSquare },
     { to: '/progress', label: 'Progression & XP', icon: Trophy },
     { to: '/analytics', label: 'Analytics', icon: BarChart2 },
@@ -112,7 +116,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile, isMobileDrawer 
                 }`}
               >
                 <Icon className="w-4 h-4 shrink-0 stroke-[2.2]" />
-                <span>{item.label}</span>
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.badge !== undefined && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                      isActive
+                        ? 'bg-white text-[#6C5CE7]'
+                        : 'bg-[#6C5CE7]/10 text-[#6C5CE7] border border-[#6C5CE7]/20'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}

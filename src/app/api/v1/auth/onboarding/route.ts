@@ -25,31 +25,37 @@ export async function POST(request: Request) {
     if (Array.isArray(starter_habits) && starter_habits.length > 0) {
       starter_habits.forEach((sh: any, index: number) => {
         const habitTitle = sh.name || sh.title || 'Daily Routine';
+        const targetVal = sh.target_value !== undefined ? (Number(sh.target_value) > 0 ? Number(sh.target_value) : 1) : 1;
+        const targetUnit = sh.unit || sh.target_unit || (targetVal > 1 ? 'units' : 'times');
+        const habitType = sh.habit_type || (targetVal > 1 ? 'quantitative' : 'binary');
+
         db.createHabit({
           user_id: userId,
           title: habitTitle,
           name: habitTitle,
           description: sh.description || null,
-          category: sh.category || 'health',
+          category: sh.category || 'Health',
           color: sh.color || '#6C5CE7',
           icon: sh.icon || 'activity',
           frequency_type: sh.frequency_type || 'daily',
-          frequency_days: sh.frequency_days || null,
+          frequency_days: sh.frequency_days || '0,1,2,3,4,5,6',
           target_days_per_week: sh.target_days_per_week || null,
-          target_value: sh.target_value || 1,
-          target_unit: sh.target_unit || 'times',
-          target_type: sh.target_type || 'boolean',
-          time_of_day: sh.preferred_time || sh.time_of_day || 'morning',
-          preferred_time: sh.preferred_time || sh.time_of_day || 'morning',
+          target_value: targetVal,
+          target_unit: targetUnit,
+          unit: targetUnit,
+          target_type: sh.target_type || (targetVal > 1 ? 'numeric' : 'boolean'),
+          habit_type: habitType,
+          time_of_day: sh.preferred_time || sh.time_of_day || 'anytime',
+          preferred_time: sh.preferred_time || sh.time_of_day || 'anytime',
           reminder_time: sh.reminder_time || null,
-          reminder_enabled: Boolean(sh.reminder_enabled),
+          reminder_enabled: Boolean(sh.reminder_enabled || sh.reminder_time),
           is_active: true,
           is_archived: false,
           sort_order: index,
           current_streak: 0,
           longest_streak: 0,
           total_completions: 0,
-          xp_per_completion: sh.xp_per_completion || 15,
+          xp_per_completion: sh.xp_per_completion || (sh.difficulty === 'hard' ? 15 : sh.difficulty === 'easy' ? 5 : 10),
           difficulty: sh.difficulty || 'medium',
         });
       });

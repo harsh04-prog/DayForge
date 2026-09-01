@@ -24,41 +24,27 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { useHabits } from '@/context/HabitContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 
 export default function ChallengesPage() {
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { challenges, joinChallenge, leaveChallenge, fetchChallenges, isLoading } = useHabits();
   const [activeTab, setActiveTab] = useState<'all' | 'joined'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [challengeToLeave, setChallengeToLeave] = useState<Challenge | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { showSuccess, showError } = useToast();
 
-  const fetchChallenges = async () => {
-    try {
-      setIsLoading(true);
-      const res = await api.get<Challenge[]>('/challenges');
-      setChallenges(res.data);
-    } catch (err) {
-      console.error('Failed to load challenges', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchChallenges();
-  }, []);
+  }, [fetchChallenges]);
 
   const handleJoin = async (id: number) => {
     try {
       setIsProcessing(true);
-      const res = await api.post(`/challenges/${id}/join`);
-      showSuccess('Challenge Joined! 🏆', res.data.message);
-      await fetchChallenges();
-    } catch (err: any) {
-      showError('Error', err.response?.data?.detail || 'Failed to join challenge.');
+      await joinChallenge(id);
+    } catch {
+      // Toast handled by HabitContext
     } finally {
       setIsProcessing(false);
     }
@@ -68,12 +54,10 @@ export default function ChallengesPage() {
     if (!challengeToLeave) return;
     try {
       setIsProcessing(true);
-      const res = await api.post(`/challenges/${challengeToLeave.id}/leave`);
-      showSuccess('Left Challenge', res.data.message);
+      await leaveChallenge(challengeToLeave.id);
       setChallengeToLeave(null);
-      await fetchChallenges();
-    } catch (err: any) {
-      showError('Error', err.response?.data?.detail || 'Failed to leave challenge.');
+    } catch {
+      // Toast handled by HabitContext
     } finally {
       setIsProcessing(false);
     }

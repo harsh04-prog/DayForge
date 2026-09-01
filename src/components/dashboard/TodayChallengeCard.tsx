@@ -8,16 +8,18 @@ import { HabitIcon } from '../common/IconHelper';
 import { Badge } from '../common/Badge';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useHabits } from '../../context/HabitContext';
 import { soundEffects } from '../../utils/soundEffects';
 import confetti from 'canvas-confetti';
 
 interface TodayChallengeCardProps {
   challenge: any;
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 export const TodayChallengeCard: React.FC<TodayChallengeCardProps> = ({ challenge, onRefresh }) => {
   const { showSuccess, showError } = useToast();
+  const { checkinChallenge } = useHabits();
   const [isUpdating, setIsUpdating] = useState(false);
 
   const isCompleted = Boolean(challenge.today_completed);
@@ -39,23 +41,8 @@ export const TodayChallengeCard: React.FC<TodayChallengeCardProps> = ({ challeng
     e.preventDefault();
     setIsUpdating(true);
     try {
-      const res = await api.post(`/challenges/${challenge.id}/checkin`, {
-        progress: isCompleted ? 0 : targetVal,
-        is_absolute: true,
-      });
-
-      if (!isCompleted) {
-        soundEffects.playComplete();
-        confetti({
-          particleCount: 60,
-          spread: 60,
-          origin: { y: 0.7 },
-        });
-      }
-      showSuccess('Challenge Updated', res.data.message || 'Progress logged.');
-      onRefresh();
-    } catch (err: any) {
-      showError('Error', err.response?.data?.detail || "Couldn't update today's challenge progress. Please try again.");
+      await checkinChallenge(challenge.id, isCompleted ? 0 : targetVal, true);
+      if (onRefresh) onRefresh();
     } finally {
       setIsUpdating(false);
     }
@@ -67,23 +54,8 @@ export const TodayChallengeCard: React.FC<TodayChallengeCardProps> = ({ challeng
     const newVal = Math.max(0, currentVal + delta);
     setIsUpdating(true);
     try {
-      const res = await api.post(`/challenges/${challenge.id}/checkin`, {
-        progress: newVal,
-        is_absolute: true,
-      });
-
-      if (newVal >= targetVal && !isCompleted) {
-        soundEffects.playComplete();
-        confetti({
-          particleCount: 60,
-          spread: 60,
-          origin: { y: 0.7 },
-        });
-      }
-      showSuccess('Challenge Progress', res.data.message || 'Progress updated.');
-      onRefresh();
-    } catch (err: any) {
-      showError('Error', err.response?.data?.detail || "Couldn't update today's challenge progress. Please try again.");
+      await checkinChallenge(challenge.id, newVal, true);
+      if (onRefresh) onRefresh();
     } finally {
       setIsUpdating(false);
     }

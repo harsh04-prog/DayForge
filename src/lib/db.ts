@@ -177,6 +177,23 @@ export interface UserChallengeLogRecord {
   logged_at: string;
 }
 
+export interface TodoRecord {
+  id: number;
+  user_id: number;
+  title: string;
+  description?: string | null;
+  due_date?: string | null; // YYYY-MM-DD
+  reminder_time?: string | null; // HH:MM
+  reminder_enabled?: boolean;
+  priority?: 'low' | 'medium' | 'high';
+  category?: string;
+  completed: boolean;
+  completed_at?: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DBData {
   users: UserRecord[];
   profiles: ProfileRecord[];
@@ -190,6 +207,7 @@ export interface DBData {
   challenges: ChallengeRecord[];
   user_challenges: UserChallengeRecord[];
   user_challenge_logs: UserChallengeLogRecord[];
+  todos: TodoRecord[];
 }
 
 function getWritableFilePath(): string {
@@ -240,6 +258,7 @@ function getDefaultDB(): DBData {
     challenges,
     user_challenges: [],
     user_challenge_logs: [],
+    todos: [],
   };
 }
 
@@ -271,6 +290,7 @@ function loadDB(): DBData {
 
         if (!cachedDB.user_challenges) cachedDB.user_challenges = [];
         if (!cachedDB.user_challenge_logs) cachedDB.user_challenge_logs = [];
+        if (!cachedDB.todos) cachedDB.todos = [];
         if (!cachedDB.notifications) cachedDB.notifications = [];
         if (!cachedDB.habits) cachedDB.habits = [];
         if (!cachedDB.habit_logs) cachedDB.habit_logs = [];
@@ -1324,5 +1344,102 @@ export const db = {
   getLogsByHabitId(habitId: number): HabitLogRecord[] {
     const data = loadDB();
     return data.habit_logs.filter((l) => l.habit_id === habitId);
+  },
+
+  // ==========================================
+  // TO-DO LIST ENGINE
+  // ==========================================
+  getTodosByUserId(userId: number, includeCompleted = true): TodoRecord[] {
+    const data = loadDB();
+    if (!data.todos) data.todos = [];
+    return data.todos
+      .filter((t) => Number(t.user_id) === Number(userId) && (includeCompleted ? true : !t.completed))
+      .sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+        return a.sort_order - b.sort_order;
+      });
+  },
+
+  createTodo(todo: any): TodoRecord {
+    const data = loadDB();
+    if (!data.todos) data.todos = [];
+    const id = data.todos.length > 0 ? Math.max(...data.todos.map((t) => t.id)) + 1 : 1;
+    const now = new Date().toISOString();
+    const newRecord: TodoRecord = {
+      id,
+      user_id: Number(todo.user_id),
+      title: (todo.title || '').trim(),
+      description: todo.description ? todo.description.trim() : null,
+      due_date: todo.due_date || null,
+      reminder_time: todo.reminder_time || null,
+      reminder_enabled: Boolean(todo.reminder_enabled || todo.reminder_time),
+      priority: todo.priority || 'medium',
+      category: todo.category || 'General',
+      completed: Boolean(todo.completed),
+      completed_at: todo.completed ? now : null,
+      sort_order: todo.sort_order ?? data.todos.length,
+      created_at: now,
+      updated_at: now,
+    };
+    data.todos.push(newRecord);
+    saveDB(data);
+    return newRecord;
+  },
+
+  updateTodo(id: number, updates: Partial<TodoRecord>): TodoRecord | null {
+    const data = loadDB();
+    if (!data.todos) data.todos = [];
+    const idx = data.todos.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    const current = data.todos[idx];
+    const now = new Date().toISOString();
+    const isCompleted = updates.completed !== undefined ? Boolean(updates.completed) : current.completed;
+
+    data.todos[idx] = {
+      ...current,
+      ...updates,
+      title: updates.title !== undefined ? updates.title.trim() : current.title,
+      description: updates.description !== undefined ? (updates.description ? updates.description.trim() : null) : current.description,
+      due_date: updates.due_date !== undefined ? updates.due_date : current.due_date,
+      reminder_time: updates.reminder_time !== undefined ? updates.reminder_time : current.reminder_time,
+      reminder_enabled: updates.reminder_enabled !== undefined ? Boolean(updates.reminder_enabled) : current.reminder_enabled,
+      priority: updates.priority || current.priority,
+      category: updates.category || current.category,
+      completed: isCompleted,
+      completed_at: isCompleted ? (current.completed_at || now) : null,
+      updated_at: now,
+    };
+    saveDB(data);
+    return data.todos[idx];
+  },
+
+  toggleTodo(id: number): TodoRecord | null {
+    const data = loadDB();
+    if (!data.todos) data.todos = [];
+    const idx = data.todos.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    const current = data.todos[idx];
+    const now = new Date().toISOString();
+    const newCompleted = !current.completed;
+
+    data.todos[idx] = {
+      ...current,
+      completed: newCompleted,
+      completed_at: newCompleted ? now : null,
+      updated_at: now,
+    };
+    saveDB(data);
+    return data.todos[idx];
+  },
+
+  deleteTodo(id: number): boolean {
+    const data = loadDB();
+    if (!data.todos) data.todos = [];
+    const idx = data.todos.findIndex((t) => t.id === id);
+    if (idx === -1) return false;
+    data.todos.splice(idx, 1);
+    saveDB(data);
+    return true;
   },
 };

@@ -110,6 +110,11 @@ export default function OnboardingPage() {
 
   const handleFinishOnboarding = async () => {
     setIsLoading(true);
+    const habitsToSave =
+      selectedHabits.length > 0
+        ? selectedHabits
+        : selectedFocus.flatMap((f) => STARTER_HABITS_CATALOG[f] || []).slice(0, targetCount);
+
     try {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('dayforge_dashboard_cache');
@@ -118,8 +123,8 @@ export default function OnboardingPage() {
       await completeOnboarding({
         focus_areas: selectedFocus,
         primary_goal: primaryGoal.trim() || 'Level myself up with consistent daily discipline.',
-        target_habit_count: selectedHabits.length || targetCount,
-        starter_habits: selectedHabits,
+        target_habit_count: habitsToSave.length,
+        starter_habits: habitsToSave,
       });
 
       await fetchDashboard();

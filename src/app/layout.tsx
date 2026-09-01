@@ -3,6 +3,7 @@ import './globals.css';
 import { ToastProvider } from '@/context/ToastContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { HabitProvider } from '@/context/HabitContext';
+import { TodoProvider } from '@/context/TodoContext';
 import { NotificationProvider } from '@/context/NotificationContext';
 import { PWAProvider } from '@/context/PWAContext';
 import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
@@ -53,22 +54,24 @@ export default function RootLayout({
         <ToastProvider>
           <AuthProvider>
             <HabitProvider>
-              <NotificationProvider>
-                <PWAProvider>
-                  {/* Global Offline Status */}
-                  <OfflineIndicator />
+              <TodoProvider>
+                <NotificationProvider>
+                  <PWAProvider>
+                    {/* Global Offline Status */}
+                    <OfflineIndicator />
 
-                  {/* Global PWA Update Toast */}
-                  <PWAUpdateToast />
+                    {/* Global PWA Update Toast */}
+                    <PWAUpdateToast />
 
-                  {/* Main App Content */}
-                  {children}
+                    {/* Main App Content */}
+                    {children}
 
-                  {/* Global PWA Banner & Guide Modal */}
-                  <PWAInstallBanner />
-                  <InstallGuideModal />
-                </PWAProvider>
-              </NotificationProvider>
+                    {/* Global PWA Banner & Guide Modal */}
+                    <PWAInstallBanner />
+                    <InstallGuideModal />
+                  </PWAProvider>
+                </NotificationProvider>
+              </TodoProvider>
             </HabitProvider>
           </AuthProvider>
         </ToastProvider>
