@@ -75,18 +75,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const savedToken = localStorage.getItem('dayforge_token');
-    if (!savedToken) {
-      setIsLoading(false);
-      return;
-    }
 
     try {
-      const response = await api.get<User & { profile?: Profile; settings?: UserSettings }>('/auth/session');
+      const response = await api.get<User & { profile?: Profile; settings?: UserSettings; access_token?: string }>('/auth/session');
       if (response.data && response.data.id) {
+        const validToken = response.data.access_token || savedToken;
         setUser(response.data);
         if (response.data.profile) setProfile(response.data.profile);
         if (response.data.settings) setSettings(response.data.settings);
-        setToken(savedToken);
+        if (validToken) {
+          setToken(validToken);
+          localStorage.setItem('dayforge_token', validToken);
+        }
 
         try {
           localStorage.setItem('dayforge_user', JSON.stringify(response.data));
@@ -104,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (typeof window !== 'undefined') {
           localStorage.removeItem('dayforge_token');
           localStorage.removeItem('dayforge_user');
+          localStorage.removeItem('dayforge_profile');
         }
         setToken(null);
         setUser(null);

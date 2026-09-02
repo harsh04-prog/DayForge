@@ -119,18 +119,6 @@ export default function SettingsPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('notifications')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap min-h-[40px] ${
-              activeTab === 'notifications'
-                ? 'bg-[#6C5CE7] text-white shadow-md shadow-[#6C5CE7]/20 font-black'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Bell className="w-4 h-4" />
-            Companion Reminders
-          </button>
-
-          <button
             onClick={() => setActiveTab('preferences')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap min-h-[40px] ${
               activeTab === 'preferences'
@@ -242,106 +230,7 @@ export default function SettingsPage() {
           </form>
         )}
 
-        {/* 2. COMPANION REMINDERS TAB */}
-        {activeTab === 'notifications' && (
-          <form onSubmit={handleSaveReminders} className="space-y-5">
-            <Card className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-3xl shadow-soft space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#6C5CE7]/10 flex items-center justify-center text-[#6C5CE7]">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-base font-black text-slate-900">Quiet Hours Protection</h4>
-                  <p className="text-xs text-slate-500">DayForge will never send habit reminders during your rest hours.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Quiet Start (Sleep)</label>
-                  <input
-                    type="time"
-                    value={quietStart}
-                    onChange={(e) => setQuietStart(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 min-h-[44px]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Quiet End (Wake)</label>
-                  <input
-                    type="time"
-                    value={quietEnd}
-                    onChange={(e) => setQuietEnd(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 min-h-[44px]"
-                  />
-                </div>
-              </div>
-            </Card>
-
-            <Card className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-3xl shadow-soft space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#FFB547]/20 flex items-center justify-center text-[#D97706]">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-base font-black text-slate-900">Max Daily Reminders Engine</h4>
-                  <p className="text-xs text-slate-500">Capped at a maximum of 12 notifications per day (~1 every 2 hours).</p>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-700">Daily Cap: {maxReminders} reminders</label>
-                  <span className="text-xs font-black text-[#6C5CE7] bg-[#6C5CE7]/10 px-2.5 py-0.5 rounded-full">
-                    Recommended: 8–10
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={3}
-                  max={12}
-                  value={maxReminders}
-                  onChange={(e) => setMaxReminders(parseInt(e.target.value))}
-                  className="w-full accent-[#6C5CE7] cursor-pointer"
-                />
-                <div className="flex justify-between text-[11px] font-semibold text-slate-400 mt-1">
-                  <span>3 (Minimal)</span>
-                  <span>8 (Balanced)</span>
-                  <span>12 (Maximum)</span>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Companion Voice Tone</label>
-                <select
-                  value={reminderTone}
-                  onChange={(e) => setReminderTone(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 min-h-[44px]"
-                >
-                  <option value="encouraging">Warm & Encouraging (Friendly coaching)</option>
-                  <option value="direct">Direct & Disciplined (Clear & concise)</option>
-                  <option value="playful">Playful & Dynamic (Gamified & punchy)</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  isLoading={isSaving}
-                  leftIcon={<Save className="w-4 h-4" />}
-                  className="font-black rounded-2xl px-6 min-h-[44px]"
-                >
-                  Save Schedule
-                </Button>
-              </div>
-            </Card>
-          </form>
-        )}
-
-        {/* 3. PREFERENCES & PWA APP TAB */}
+        {/* 2. PREFERENCES & PWA APP TAB */}
         {activeTab === 'preferences' && (
           <div className="space-y-4">
             <Card className="bg-white border border-slate-200/90 p-5 sm:p-6 rounded-3xl shadow-soft space-y-4">

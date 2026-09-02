@@ -148,7 +148,15 @@ export const InteractiveActivityCalendar: React.FC = () => {
         ))}
 
         {/* Real Month Days */}
-        {monthData?.days.map((day) => {
+        {(monthData?.days || Array.from({ length: new Date(year, month, 0).getDate() }).map((_, i) => ({
+          date: `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
+          day: i + 1,
+          total_completed: 0,
+          total_scheduled: 0,
+          completion_rate: 0,
+          completed_habits: [],
+          is_today: i + 1 === new Date().getDate() && month === new Date().getMonth() + 1 && year === new Date().getFullYear(),
+        }))).map((day) => {
           const hasCompletions = day.total_completed > 0;
           const isToday = day.is_today;
 

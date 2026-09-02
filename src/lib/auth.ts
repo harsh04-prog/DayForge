@@ -3,10 +3,10 @@ import jwt from 'jsonwebtoken';
 import { NextResponse } from 'next/server';
 
 const JWT_SECRET =
-  process.env.SECRET_KEY ||
   process.env.JWT_SECRET ||
+  process.env.SECRET_KEY ||
   process.env.NEXTAUTH_SECRET ||
-  'dayforge-super-secret-key-2026-build-habits-level-yourself';
+  'dayforge_super_secure_jwt_secret_2026_prod';
 
 export interface AuthTokenPayload {
   sub: string;
@@ -163,8 +163,13 @@ export function getAuthUserFromRequest(request: Request): AuthTokenPayload | nul
     }
 
     const cookies = parseCookies(request);
-    if (cookies.dayforge_session) {
-      const verified = verifyAccessToken(cookies.dayforge_session);
+    const sessionCookie =
+      cookies.dayforge_session ||
+      cookies['__Secure-dayforge_session'] ||
+      cookies.dayforge_token ||
+      cookies.token;
+    if (sessionCookie) {
+      const verified = verifyAccessToken(sessionCookie);
       if (verified) return verified;
     }
 
