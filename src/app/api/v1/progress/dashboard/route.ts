@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 import { db } from '@/lib/db';
-import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
+import { getUserIdFromRequest } from '@/lib/auth';
 import { getLevelForXp } from '@/lib/gamification';
 import { formatDate } from '@/lib/streakEngine';
 
@@ -19,25 +20,91 @@ export async function GET(request: Request) {
     );
   }
 
-  // Reconcile client's vault data if container has missing data
-  const userVault = getUserVaultDataFromRequest(request);
-  if (userVault && Number(userVault.userId) === Number(userId)) {
-    db.syncUserDataFromVault(userId, userVault);
-  }
-
   const reqUrl = new URL(request.url);
   const clientDate = reqUrl.searchParams.get('date') || request.headers.get('x-client-date');
   const today = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : formatDate(new Date());
 
-  const user = db.getUserById(userId);
-  const profile = db.getProfileByUserId(userId);
-  const stats = db.recalculateUserStats(userId);
-  const rawHabits = db.getHabitsByUserId(userId, false);
+  // 1. Fetch User & Profile directly from Neon Postgres
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      profile: true,
+      settings: true,
+    },
+  });
 
-  const levelInfo = getLevelForXp(profile?.xp || 0);
+  if (!user) {
+    return NextResponse.json(
+      { detail: 'User not found' },
+      { status: 404, headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' } }
+    );
+  }
 
-  const enrichedHabits = rawHabits.map((h) => {
-    const todayLog = db.getLogByHabitAndDate(h.id, today);
+  // 2. Fetch User's Active Habits and Today's Logs from Neon Postgres
+  const habits = await prisma.habit.findMany({
+    where: {
+      user_id: userId,
+      is_archived: false,
+    },
+    include: {
+      logs: {
+        where: { date: today },
+      },
+    },
+    orderBy: { id: 'asc' },
+  });
+
+  // 3. Fetch all completed logs to calculate exact streak & consistency
+  const allCompletedLogs = await prisma.habitLog.findMany({
+    where: {
+      user_id: userId,
+      completed: true,
+    },
+    select: {
+      date: true,
+    },
+    orderBy: { date: 'desc' },
+  });
+
+  // Calculate streak from real distinct dates
+  const uniqueDates = Array.from(new Set(allCompletedLogs.map((l) => l.date))).sort().reverse();
+  let currentStreak = 0;
+  let checkDate = new Date(today);
+
+  // If completed today, streak includes today
+  const hasCompletedToday = uniqueDates.includes(today);
+  if (hasCompletedToday) {
+    currentStreak++;
+    checkDate.setDate(checkDate.getDate() - 1);
+  } else {
+    // Check if completed yesterday
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  while (uniqueDates.includes(formatDate(checkDate))) {
+    currentStreak++;
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  const profile = user.profile;
+  const userXp = profile?.xp || 0;
+  const levelInfo = getLevelForXp(userXp);
+  const longestStreak = Math.max(profile?.longest_streak || 0, currentStreak);
+
+  // Sync profile streak if changed
+  if (profile && (profile.current_streak !== currentStreak || profile.longest_streak !== longestStreak)) {
+    await prisma.profile.update({
+      where: { id: profile.id },
+      data: {
+        current_streak: currentStreak,
+        longest_streak: longestStreak,
+      },
+    }).catch(() => null);
+  }
+
+  // 4. Enrich habits for today's checklist
+  const enrichedHabits = habits.map((h) => {
+    const todayLog = h.logs[0];
     const isCompleted = Boolean(todayLog?.completed);
     const habitName = h.name || h.title || 'Daily Habit';
     return {
@@ -45,7 +112,7 @@ export async function GET(request: Request) {
       title: habitName,
       name: habitName,
       today_completed: isCompleted,
-      today_progress: isCompleted ? (h.target_value || 1) : 0,
+      today_progress: isCompleted ? (h.target_value || 1) : (todayLog?.value || 0),
       today_log: todayLog || null,
       completed_today: isCompleted,
     };
@@ -55,61 +122,59 @@ export async function GET(request: Request) {
   const totalCompleted = enrichedHabits.filter((h) => h.today_completed).length;
   const completionPercentage = totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : 0;
 
+  // Real Daily Score / Discipline Index
+  const dailyScore = Math.min(
+    100,
+    Math.round(completionPercentage * 0.7 + Math.min(15, currentStreak * 2) + (totalCompleted > 0 ? 15 : 0))
+  );
+
   const dailyScoreBreakdown = {
-    total_score: stats.dailyScore,
+    total_score: dailyScore,
     completion_score: Math.round((completionPercentage / 100) * 60),
-    consistency_score: Math.round((stats.consistencyRate / 100) * 25),
-    streak_bonus: Math.min(15, stats.currentStreak * 1.5),
+    consistency_score: Math.min(25, currentStreak * 3),
+    streak_bonus: Math.min(15, currentStreak * 2),
     habits_completed: totalCompleted,
     total_habits: totalScheduled,
     completion_percentage: completionPercentage,
-    summary: totalCompleted === totalScheduled && totalScheduled > 0
-      ? 'Perfect Day! All scheduled habits completed.'
-      : `${totalCompleted} of ${totalScheduled} habits completed today.`,
+    summary:
+      totalCompleted === totalScheduled && totalScheduled > 0
+        ? 'Perfect Day! All scheduled habits completed.'
+        : `${totalCompleted} of ${totalScheduled} habits completed today.`,
   };
-
-  const latestVaultData = db.getUserVaultData(userId);
-  const vaultToken = createUserDataVaultToken(latestVaultData);
 
   const res = NextResponse.json({
     date: today,
-    profile: profile || {
-      id: 1,
+    profile: {
+      id: profile?.id || 1,
       user_id: userId,
-      full_name: user?.full_name || '',
-      avatar_url: 'male_1',
+      full_name: user.full_name,
+      avatar_url: user.avatar_url || 'male_1',
       level: levelInfo.level,
-      xp: levelInfo.current_xp,
-      available_shields: 2,
+      xp: userXp,
+      available_shields: profile?.available_shields ?? 2,
     },
     level_info: levelInfo,
     daily_score: dailyScoreBreakdown,
     today_completed_count: totalCompleted,
     today_scheduled_count: totalScheduled,
     today_completion_rate: completionPercentage,
-    active_streak: stats.currentStreak,
+    active_streak: currentStreak,
     habits: enrichedHabits,
     today_habits: enrichedHabits,
     streaks: {
-      current_streak: stats.currentStreak,
-      longest_streak: stats.longestStreak,
-      consistency_rate: stats.consistencyRate,
+      current_streak: currentStreak,
+      longest_streak: longestStreak,
+      consistency_rate: completionPercentage,
       shield_active: false,
     },
     character: {
       level: levelInfo.level,
-      title: levelInfo.title,
-      xp: levelInfo.current_xp,
-      next_level_xp: levelInfo.next_level_xp,
-      level_progress_percentage: levelInfo.level_progress_percentage,
-      available_shields: profile?.available_shields || 2,
+      rank: levelInfo.title,
+      xp: userXp,
+      streak: currentStreak,
     },
-    unseen_achievements: [],
-    recent_achievements: db.getAchievements(userId).filter((a) => a.unlocked).slice(0, 3),
-    vault_token: vaultToken,
   });
 
-  res.headers.set('x-dayforge-vault-token', vaultToken);
   res.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
   return res;
 }

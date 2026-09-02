@@ -21,7 +21,6 @@ interface NotificationContextType {
   dismissNotification: (id: number) => Promise<void>;
   snoozeNotification: (id: number, minutes: number) => Promise<void>;
   completeFromNotification: (id: number) => Promise<void>;
-  triggerTestNotification: () => Promise<void>;
   requestBrowserPermission: () => Promise<boolean>;
   showLocalSmartNotification: (title: string, message: string, icon?: string, actionUrl?: string) => Promise<void>;
 }
@@ -273,32 +272,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const triggerTestNotification = async () => {
-    try {
-      const res = await api.post<NotificationItem>('/notifications/test', {});
-      soundEffects.playComplete();
-      if (res.data) {
-        setNotifications((prev) => [res.data, ...prev.filter((n) => Number(n.id) !== Number(res.data.id))]);
-      }
-      await fetchBudget();
-
-      // Show Service Worker / Native Push with sound & vibration
-      if (res.data) {
-        await showLocalSmartNotification(
-          res.data.title,
-          res.data.message,
-          res.data.icon,
-          '/'
-        );
-        showSuccess('Smart Reminder Fired ⚡', res.data.message);
-      }
-    } catch {
-      showError('Error', 'Could not fire companion reminder.');
-    }
-  };
-
   const requestBrowserPermission = async (): Promise<boolean> => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
+    if (typeof window === 'undefined') return false;
+
+    // Trigger OneSignal native permission flow
+    if (window.OneSignalDeferred) {
+      window.OneSignalDeferred.push(async function (OneSignal: any) {
+        try {
+          await OneSignal.Notifications.requestPermission();
+        } catch (e) {
+          console.warn('OneSignal permission prompt error:', e);
+        }
+      });
+    }
+
+    if (!('Notification' in window)) {
       showInfo('Not Supported', 'Web notifications are not supported on this browser.');
       return false;
     }
@@ -309,12 +297,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       if (perm === 'granted') {
         showSuccess('Notifications Enabled 🔔', 'Personalized DayForge habit reminders are active.');
-        await showLocalSmartNotification(
-          'DayForge Reminders Active ⚡',
-          'Paani piya kya? 💧 Habit check-ins and streak updates are now active!',
-          'zap',
-          '/'
-        );
         return true;
       } else if (perm === 'denied') {
         showInfo(
@@ -347,7 +329,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         dismissNotification,
         snoozeNotification,
         completeFromNotification,
-        triggerTestNotification,
         requestBrowserPermission,
         showLocalSmartNotification,
       }}

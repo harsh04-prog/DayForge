@@ -5,268 +5,226 @@ export interface SmartNotificationQuote {
   category: 'habits' | 'wellness' | 'routine' | 'progress' | 'reflection' | 'motivation' | 'todo';
 }
 
-const HABIT_SMART_MESSAGES: Record<string, { title: string; messages: string[]; icon: string }> = {
-  water: {
-    title: 'Hydration Check 💧',
-    icon: 'droplet',
+export interface SmartNotificationData {
+  title: string;
+  message: string;
+  icon: string;
+}
+
+// Swiggy / Zomato / CRED style witty Hinglish content bank (at least 8-10 variations per category)
+export const NOTIFICATION_CONTENT_BANK: Record<
+  string,
+  { title: string; messages: string[]; icon: string }
+> = {
+  health: {
+    title: 'Hydration & Health 💧',
+    icon: 'droplets',
     messages: [
-      'Paani piya kya? 💧 Body ko hydration chahiye boss!',
-      'Hydration check! Ek glass paani gatak le jaldi 🥤',
-      'Bhai paani peena mat bhool, energy level high rahega ⚡',
-      'DayForge reminder: Glass uthao aur paani piyo boss 😄',
-      'Water break time: Stay hydrated and energized 💧',
-      'Paani peena zaroori hai! Refill your bottle now 🧊',
+      'Bhai paani pi le, dehydration se glow nahi aayega 💧',
+      'Paani peena bhool gaye? Ek glass gatak lo jaldi, body will thank you! 🥤',
+      'Chai-coffee thik hai dost, par paani kaun piyega? Drink up! 🧊',
+      'Plants bhi paani bina murjha jaate hain, aur tu toh insaan hai. Hydrate now! 🌱',
+      'Hydration check: Glass uthao, bottle bharo, aur pee jao! 💧⚡',
+      'Water break le lo boss! Dimag ko 100% cooling chahiye 🧠💦',
+      'Khali pet aur bina paani ke productive banna impossible hai. Drink water now!',
+      'Ek sip aur ek streak — dono miss mat hone do! Paani piyo jaldi 💧',
+      'Reminder from your future self: Aaj paani pi lo, kal headache nahi hoga! 🥤',
+      'Thoda paani pi lo yaar, kidney dua degi! 🧊',
     ],
   },
   fitness: {
-    title: 'Movement & Fitness 🏃',
-    icon: 'activity',
+    title: 'Fitness & Workout 🏋️',
+    icon: 'flame',
     messages: [
-      'Bhai gym jaana bhoola kya? Ya thoda workout ho jaaye? 🏃',
-      'Aalas mat kar yaar, bas 15-20 minute ka workout kar le 🔥',
-      'Iron discipline mode on! Let’s get that fitness goal done 💪',
-      'Thoda movement ho jaaye? Muscles are calling you ⚡',
-      'Consistency over intensity: Time for today’s workout sprint 🏋️',
-      'Workout ka time ho gaya — 15 minutes bhi count karte hain 🔥',
-    ],
-  },
-  reading: {
-    title: 'Reading Time 📖',
-    icon: 'book',
-    messages: [
-      'Ek page padh le yaar 📖 10 pages today = 1 book this month!',
-      'Book open karo boss, brain ko high-leverage food chahiye 🧠',
-      'Aaj ke pages baaki hain dost. 5-10 minutes nikal lo 📚',
-      'A chapter a day keeps brain fog away 📖',
-      'Feed your mind before the day ends: Open your book 📚',
-      'Wisdom compounds daily! Time for a quick reading session 💡',
+      'Dumbbell bula rahe hain, aur tu phone chala raha hai? Uth ja gym ke liye! 🏋️',
+      'Excuses burn 0 calories bro. 20 minute ka workout kar le jaldi! 🔥',
+      'Bhai gym ka outfit pehankar reel mat dekh, ab workout start kar! 💪',
+      'Post-workout dopamine hit chahiye ya guilt? Choose wisely, start now! ⚡',
+      'Aaj workout miss kiya toh body kal complaint karegi. Let’s crush it! 🏃',
+      'Aalas ko side me rakho aur thode pushups laga lo champ! 💥',
+      'Shape me aana hai ya bas gym memberships renew karni hai? Hit the workout! 🏋️‍♂️',
+      'Consistency is the king! Sirf 15 minute ka sprint bhi count hota hai 🔥',
+      'Cardio time boss! Thoda paseena baha le, confidence double ho jayega 🏃‍♂️',
+      'Iron discipline mode ON. Aaj ka fitness goal niptao jaldi! 🏆',
     ],
   },
   study: {
-    title: 'Focus & Study 🧠',
-    icon: 'brain',
+    title: 'Focus & Reading 📚',
+    icon: 'book-open',
     messages: [
-      'Ek topic complete kar le yaar 🧠 Focus mode on!',
-      'Padhai ka time! Silence distractions and conquer today’s study goal 🎯',
-      'Bro, aaj ka study target complete kiya kya? Time to level up 📚',
-      'Future self is waiting: 30 minutes of deep study now 💡',
-      'One focused study session compounds forever 🧠',
-      'Padhai shuru karo! 25 minutes of deep focus timer on ⏱️',
-    ],
-  },
-  health: {
-    title: 'Health & Wellness 🌱',
-    icon: 'heart',
-    messages: [
-      'Health first boss! 🥗 Aaj ka healthy routine complete kiya kya?',
-      'Bhai daily vitamins & healthy nutrition lena mat bhoolna 💊',
-      'Your body is your temple: Keep your health habits locked in 🥑',
-      'Self-care check! 5 minutes for your health routine 🌱',
-      'Healthy habits = unstoppable energy. Let’s do this ⚡',
-      'Nourish yourself today: Consistency in health compounds 🍏',
-    ],
-  },
-  mindfulness: {
-    title: 'Mindfulness & Growth 🧘',
-    icon: 'sparkles',
-    messages: [
-      '2 minute shaant baith jao yaar 🧘 Mind reset zaroori hai!',
-      'Meditation & mindfulness time: Breathe in clarity, exhale stress ✨',
-      'Gratitude check: Write down 1 good thing about today 📝',
-      'Mental peace is a superpower. Take a 5-minute breather 🌿',
-      'Center your mind: Daily reflection routine is ready for you 🧘',
-      'Breathe deeply: Relax your shoulders and reset your focus ✨',
-    ],
-  },
-  productivity: {
-    title: 'Deep Work & Career 🎯',
-    icon: 'zap',
-    messages: [
-      'Deep work mode on! 🎯 Aaj ka primary task niptate hain.',
-      'Bro, distraction band karo aur 30 minutes full focus lock in karo 🚀',
-      'Career progression starts with daily micro-wins! Let’s conquer this 💻',
-      'High-leverage action time: Time to execute your goals 🔥',
-      'No zero days: Level up your career and projects today ⚡',
-      'Discipline = Freedom. Execute your top priority now 🎯',
-    ],
-  },
-  walking: {
-    title: 'Step Goal Check 🚶',
-    icon: 'map-pin',
-    messages: [
-      'Bhai thoda walk ho jaaye? 🚶 Steps tumhara wait kar rahe hain.',
-      'Take a quick fresh-air walk — 1000 steps closer to your daily target!',
-      'Step away from the screen for a 5-minute walking reset 🌿',
-      'Chalo thoda ghoom aao, fresh air and clear mind guaranteed ⚡',
+      'Phone chhod aur 20 panne padh le. Gyan hi shakti hai dost! 📚',
+      'Book open karo boss, brain ko high-leverage food chahiye 🧠📖',
+      'Netflix kal bhi yahi rahega, pehle aaj ka study target finish kar le! 🎯',
+      'One chapter a day keeps brain fog away. Padhai shuru karo champ! 📖',
+      'Reel scroll karne se degree nahi milegi, kitabein bula rahi hain! 📚⚡',
+      'Ek topic lock in karo. 25 minutes deep focus, zero phone check! 💡',
+      'Knowledge compounds daily! 10 pages today = 1 complete book this month 📖',
+      'Bro, aaj ka study goal bacha hai. Table pe aao aur focus karo! 🎯',
+      'Future leader banna hai toh padhai toh karni padegi. Let’s study! 🧠',
+      'Padhai ka timer start karo: 30 minutes of undisturbed deep study ⏱️',
     ],
   },
   sleep: {
-    title: 'Night Wind Down 🌙',
+    title: 'Sleep & Night Recovery 🌙',
     icon: 'moon',
     messages: [
-      'Phone rakh de bhai! 🌙 8 hours of deep sleep unlocks maximum energy tomorrow.',
-      'Night routine complete karo aur screen off kar do boss 😴',
-      'Calm mind, deep sleep. Kal fir se conquer karna hai ⚡',
-      'DayForge says: screen thodi der mein band karni hai boss 🌙',
-      'Wind down time: Rest deeply for tomorrow’s momentum 😴',
+      'Raat ke 11 baj gaye hain. Screen band kar aur so ja champ! 😴',
+      'Reels subah bhi wahin rahengi dost, dark circles kal subah aa jayenge. So jao! 🌙',
+      'Bedtime alert: Dimag ka off button dabao aur restorative sleep lo 💤',
+      'Night owl banna band karo, kal subah productive day wait kar raha hai! 🛌',
+      'Sleep is your superpower. Put the phone down and close your eyes now 😴✨',
+      '8 ghante ki sleep = 100% mental clarity. Good night boss! 🌙',
+      'Charging sirf phone ko nahi, tumhari body ko bhi chahiye. So jao jaldi! 🔋',
+      'Sleep schedule fix karoge toh streaks automatically badhengi. Sweet dreams! 🌟',
+      'Late night overthinking cancel karo, pillow pe sir rakho aur relax karo 💤',
+      'Sleep debt badhta ja raha hai boss. Wrap up everything and hit the bed! 😴',
     ],
   },
-  todo: {
-    title: 'To-Do Reminder 📝',
-    icon: 'check-square',
+  mindfulness: {
+    title: 'Mindfulness & Mental Peace 🧘',
+    icon: 'sparkles',
     messages: [
-      'Ye task pending hai boss! ⚡ 5 minute mein nipta do.',
-      'To-do reminder: Aaj ka important task complete karne ka time aa gaya 🎯',
-      'Bro, ye task check off kar lo aur stress free ho jao!',
-      'Quick action: Finish this task and keep your momentum high 🔥',
+      'Take a deep breath. 5 minute shaanti se baitho, dimaag reset karo 🧘',
+      'Overthinking pause karo boss. 3 deep breaths lo aur present moment me aao ✨',
+      'Breathe in clarity, breathe out stress. Aaj ka mindfulness check-in karo 🌿',
+      'Gratitude check: Aaj ka ek achha pal yaad karo aur smile karo 😊',
+      'World fast chal raha hai, tum 2 minute ke liye slow down ho jao 🧘‍♂️',
+      'Mental reset time: Apne shoulders relax karo, jaw unclench karo aur saans lo 🌿',
+      'Peace of mind is luxury. 5 minutes of quiet time right now ✨',
+      'Thoda pause lo dost. Hustle ke beech sukoon zaroori hai 🕊️',
+      'Mindful moment: Screen se aankhein hatao aur bahar dekho thodi der 🍃',
+      'Breathe deeply: Inhale confidence, exhale all doubts. You got this! 🧘',
     ],
   },
-  general: {
-    title: 'Habit Check-in ⚡',
+  productivity: {
+    title: 'Productivity & Deep Work ⚡',
     icon: 'zap',
     messages: [
-      'Bhai "{habitName}" karna bhi zaroori hai! ⚡ 2 minutes nikal lo.',
-      '"{habitName}" check-in time! Kal wala version tumhe thank karega 🚀',
-      'Consistency is your superpower! Let’s complete "{habitName}" today 🔥',
-      '👀 DayForge attendance laga raha hai... "{habitName}" hui ya nahi?',
-      'Bro, "{habitName}" ne tumhe yaad kiya! Quick check-in kar lo ⚡',
-      'Small micro-step for "{habitName}" keeps your streak locked in 🏆',
+      'Target achieve karna hai ya bas sochna hai? Let’s finish this task! ⚡',
+      'Procrastination ko tata bye-bye bolo aur agla task complete karo! 🚀',
+      'High-leverage action time: Tab band karo, deep work shuru karo! 💻',
+      'Aadha ghanta bina distraction ke kaam kar lo, relief alag level hoga 🎯',
+      'Bro, "kal karunga" wali date calendar me exist nahi karti. Do it now! 🔥',
+      'Checklist pe strike marne ka maza hi alag hai. Finish that pending task! ⚡',
+      'Focus mode activated! Distractions zero, execution 100% 🚀',
+      'Small daily wins make legendary careers. Today’s task is waiting! 💼',
+      'Kaam khatam karo aur shaam ko guilt-free chill karo boss! 🎯',
+      'Discipline = Freedom. Ek important task complete karo aur XP kama lo! 🔥',
     ],
   },
 };
 
-export function getSmartHabitNotification(
-  habitName?: string,
-  habitCategory?: string,
-  userName?: string,
-  isTodo: boolean = false
-): SmartNotificationQuote {
-  if (isTodo) {
-    const todoGroup = HABIT_SMART_MESSAGES.todo;
-    const randomIdx = Math.floor(Math.random() * todoGroup.messages.length);
+const GENERIC_HABIT_TEMPLATES: string[] = [
+  'Hey {name}! {habitName} ka time ho gaya hai — ek checkmark aur streak bachao! 🔥',
+  'Kahan busy ho {name}? {habitName} tumhara wait kar raha hai, jaldi niptao! ⚡',
+  '{name}, streak tutne mat dena! {habitName} complete karo aur XP paao 🏆',
+  'Ek micro-win for today: {habitName}! Bas 2 minute lagenge, complete it now! 🚀',
+  'Discipline test alert! Kya aap aaj {habitName} complete karenge? Let’s go! 💪',
+  '{name} ji, reminder aaya hai: {habitName} finish karke relax karo 🎯',
+  'Consistency streak is on the line: {habitName} is waiting for you! 🌟',
+  'Level up yourself! {habitName} complete karo aur leaderboard pe aage badho ⚡',
+  'Aaj ka commitment yaad hai na {name}? {habitName} mark karke dikhao! 🔥',
+  'Don’t break the chain! Complete {habitName} right now and level up! 🛡️',
+];
+
+export function getWittyNotification(
+  habitOrTaskTitle: string,
+  category?: string,
+  userName: string = 'Friend'
+): SmartNotificationData {
+  const cleanTitle = (habitOrTaskTitle || '').trim();
+  const lower = cleanTitle.toLowerCase();
+  const catLower = (category || '').toLowerCase();
+
+  let matchedGroup: { title: string; messages: string[]; icon: string } | null = null;
+
+  if (
+    lower.includes('water') ||
+    lower.includes('paani') ||
+    lower.includes('drink') ||
+    lower.includes('hydrat') ||
+    lower.includes('liquid') ||
+    catLower.includes('health')
+  ) {
+    matchedGroup = NOTIFICATION_CONTENT_BANK.health;
+  } else if (
+    lower.includes('gym') ||
+    lower.includes('workout') ||
+    lower.includes('run') ||
+    lower.includes('exercise') ||
+    lower.includes('pushup') ||
+    lower.includes('fitness') ||
+    catLower.includes('fitness')
+  ) {
+    matchedGroup = NOTIFICATION_CONTENT_BANK.fitness;
+  } else if (
+    lower.includes('read') ||
+    lower.includes('book') ||
+    lower.includes('study') ||
+    lower.includes('page') ||
+    lower.includes('learn') ||
+    catLower.includes('reading') ||
+    catLower.includes('study')
+  ) {
+    matchedGroup = NOTIFICATION_CONTENT_BANK.study;
+  } else if (
+    lower.includes('sleep') ||
+    lower.includes('bed') ||
+    lower.includes('rest') ||
+    lower.includes('soja') ||
+    catLower.includes('sleep')
+  ) {
+    matchedGroup = NOTIFICATION_CONTENT_BANK.sleep;
+  } else if (
+    lower.includes('meditat') ||
+    lower.includes('mindful') ||
+    lower.includes('breath') ||
+    lower.includes('peace') ||
+    lower.includes('gratitude') ||
+    catLower.includes('mindfulness')
+  ) {
+    matchedGroup = NOTIFICATION_CONTENT_BANK.mindfulness;
+  } else if (
+    lower.includes('work') ||
+    lower.includes('code') ||
+    lower.includes('task') ||
+    lower.includes('project') ||
+    lower.includes('email') ||
+    catLower.includes('productivity') ||
+    catLower.includes('career')
+  ) {
+    matchedGroup = NOTIFICATION_CONTENT_BANK.productivity;
+  }
+
+  if (matchedGroup && matchedGroup.messages.length > 0) {
+    const randomIndex = Math.floor(Math.random() * matchedGroup.messages.length);
+    const message = matchedGroup.messages[randomIndex];
     return {
-      title: habitName ? `Task: ${habitName}` : todoGroup.title,
-      message: todoGroup.messages[randomIdx],
-      icon: 'check-square',
-      category: 'todo',
+      title: matchedGroup.title,
+      message,
+      icon: matchedGroup.icon,
     };
   }
 
-  const name = (habitName || '').trim();
-  const cleanName = name.toLowerCase();
-  const cleanCat = (habitCategory || '').toLowerCase();
-
-  let selectedGroup: { title: string; messages: string[]; icon: string };
-
-  // 1. Water / Hydration (ONLY when name or category specifically references water/hydration)
-  if (
-    cleanName.includes('water') ||
-    cleanName.includes('hydrate') ||
-    cleanName.includes('paani') ||
-    cleanCat === 'water' ||
-    cleanCat === 'hydration'
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.water;
-  }
-  // 2. Fitness / Gym / Workout / Exercise
-  else if (
-    cleanName.includes('workout') ||
-    cleanName.includes('gym') ||
-    cleanName.includes('exercise') ||
-    cleanName.includes('pushup') ||
-    cleanName.includes('run') ||
-    cleanName.includes('train') ||
-    cleanName.includes('lift') ||
-    cleanCat.includes('fitness')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.fitness;
-  }
-  // 3. Reading / Books
-  else if (
-    cleanName.includes('read') ||
-    cleanName.includes('book') ||
-    cleanName.includes('page') ||
-    cleanName.includes('novel') ||
-    cleanCat.includes('reading')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.reading;
-  }
-  // 4. Study / Learning / Courses / Revision
-  else if (
-    cleanName.includes('study') ||
-    cleanName.includes('learn') ||
-    cleanName.includes('revision') ||
-    cleanName.includes('exam') ||
-    cleanName.includes('homework') ||
-    cleanCat.includes('study')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.study;
-  }
-  // 5. Mindfulness / Meditation / Gratitude / Journal / Personal Growth
-  else if (
-    cleanName.includes('meditat') ||
-    cleanName.includes('gratitude') ||
-    cleanName.includes('journal') ||
-    cleanName.includes('mindful') ||
-    cleanName.includes('breathe') ||
-    cleanCat.includes('growth') ||
-    cleanCat.includes('mindful')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.mindfulness;
-  }
-  // 6. Walking / Steps
-  else if (cleanName.includes('walk') || cleanName.includes('step')) {
-    selectedGroup = HABIT_SMART_MESSAGES.walking;
-  }
-  // 7. Sleep / Night
-  else if (
-    cleanName.includes('sleep') ||
-    cleanName.includes('bed') ||
-    cleanName.includes('night') ||
-    cleanCat.includes('sleep')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.sleep;
-  }
-  // 8. Productivity / Career / Deep Work
-  else if (
-    cleanName.includes('code') ||
-    cleanName.includes('work') ||
-    cleanName.includes('project') ||
-    cleanCat.includes('productivity') ||
-    cleanCat.includes('career')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.productivity;
-  }
-  // 9. General Health / Vitamins / Nutrition
-  else if (
-    cleanName.includes('vitamin') ||
-    cleanName.includes('diet') ||
-    cleanName.includes('nutrition') ||
-    cleanName.includes('meal') ||
-    cleanCat.includes('health')
-  ) {
-    selectedGroup = HABIT_SMART_MESSAGES.health;
-  }
-  // 10. Generic Dynamic Fallback with Habit's Actual Name
-  else {
-    selectedGroup = HABIT_SMART_MESSAGES.general;
-  }
-
-  const randomIdx = Math.floor(Math.random() * selectedGroup.messages.length);
-  let rawMessage = selectedGroup.messages[randomIdx];
-
-  // Dynamically inject habit name into general templates
-  const displayHabitName = name || 'Daily Habit';
-  let formattedMessage = rawMessage.replace(/\{habitName\}/g, displayHabitName);
-
-  if (userName && formattedMessage.includes('bhai')) {
-    formattedMessage = formattedMessage.replace('bhai', userName);
-  }
+  // Dynamic Fallback
+  const randomTemplate =
+    GENERIC_HABIT_TEMPLATES[Math.floor(Math.random() * GENERIC_HABIT_TEMPLATES.length)];
+  const personalized = randomTemplate
+    .replace('{name}', userName)
+    .replace('{habitName}', cleanTitle || 'Your daily routine');
 
   return {
-    title: name ? `${name} · ${selectedGroup.title}` : selectedGroup.title,
-    message: formattedMessage,
-    icon: selectedGroup.icon,
-    category: 'habits',
+    title: `${cleanTitle} Time ⚡`,
+    message: personalized,
+    icon: 'zap',
   };
+}
+
+export function getSmartHabitNotification(
+  habitName: string,
+  category?: string,
+  userName?: string,
+  isTodo: boolean = false
+): SmartNotificationData {
+  return getWittyNotification(habitName, category, userName);
 }

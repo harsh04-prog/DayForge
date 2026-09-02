@@ -78,6 +78,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (isCompleted) {
       xpEarned = habit?.xp_per_completion || (habit?.difficulty === 'hard' ? 15 : habit?.difficulty === 'easy' ? 5 : 10);
       db.addXp(userId, xpEarned, 'habit_completion', habitId, `Completed ${habit?.title || habit?.name || 'Habit'}`);
+
+      // Persist XP to Neon Postgres
+      await prisma.profile.updateMany({
+        where: { user_id: userId },
+        data: { xp: { increment: xpEarned } },
+      }).catch(() => null);
+
+      await prisma.xPTransaction.create({
+        data: {
+          user_id: userId,
+          amount: xpEarned,
+          source_type: 'habit_completion',
+          source_id: habitId,
+          description: `Completed ${habit?.title || habit?.name || 'Habit'}`,
+        },
+      }).catch(() => null);
     }
 
     // 2. Persist date-based HabitLog directly to Postgres via Prisma

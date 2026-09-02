@@ -10,6 +10,7 @@ import { OfflineIndicator } from '@/components/pwa/OfflineIndicator';
 import { PWAUpdateToast } from '@/components/pwa/PWAUpdateToast';
 import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
 import { InstallGuideModal } from '@/components/pwa/InstallGuideModal';
+import { OneSignalInitializer } from '@/components/notifications/OneSignalInitializer';
 
 export const metadata: Metadata = {
   title: 'DayForge — Build habits. Level yourself.',
@@ -69,6 +70,9 @@ export default function RootLayout({
                     {/* Global PWA Banner & Guide Modal */}
                     <PWAInstallBanner />
                     <InstallGuideModal />
+
+                    {/* OneSignal Web Push SDK Initializer */}
+                    <OneSignalInitializer />
                   </PWAProvider>
                 </NotificationProvider>
               </TodoProvider>

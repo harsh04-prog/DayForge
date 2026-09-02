@@ -29,7 +29,6 @@ export const NotificationBell: React.FC = () => {
     dismissNotification,
     snoozeNotification,
     completeFromNotification,
-    triggerTestNotification,
     requestBrowserPermission,
   } = useNotifications();
 
@@ -300,19 +299,14 @@ export const NotificationBell: React.FC = () => {
               )}
             </div>
 
-            {/* Footer with Test Trigger */}
-            <div className="p-3 bg-slate-50  border-t border-slate-100  flex items-center justify-between">
-              <span className="text-[10px] text-slate-400 font-semibold">
-                Never bunches · Max 12/day
+            {/* Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Daily Reminders & Check-in Alerts
               </span>
-              <button
-                onClick={() => triggerTestNotification()}
-                className="text-[11px] font-bold text-[#6C5CE7]  hover:underline transition-colors flex items-center gap-1"
-                title="Test how DayForge evaluates and delivers the single best reminder"
-              >
-                <Sparkles className="w-3 h-3" />
-                Test Engine
-              </button>
+              <span className="text-[10px] text-[#6C5CE7] font-black uppercase tracking-wider">
+                Active
+              </span>
             </div>
           </motion.div>
         )}

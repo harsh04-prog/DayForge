@@ -54,6 +54,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const xpToDeduct = existingLog.xp_earned || habit?.xp_per_completion || 10;
       db.addXp(userId, -xpToDeduct, 'habit_undo', habitId, `Undid ${habit?.title || habit?.name || 'Habit'}`);
 
+      await prisma.profile.updateMany({
+        where: { user_id: userId },
+        data: { xp: { decrement: xpToDeduct } },
+      }).catch(() => null);
+
       await prisma.habitLog.update({
         where: { id: existingLog.id },
         data: {
