@@ -134,16 +134,15 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       return;
     }
 
-    const parsedTarget = Number(targetValue);
-    if (isNaN(parsedTarget) || parsedTarget <= 0) {
-      setError('Please enter a valid target amount greater than 0.');
+    const isQuantitative = habitType === 'quantitative';
+    const parsedTarget = isQuantitative ? Number(targetValue) : 1;
+    if (isQuantitative && (isNaN(parsedTarget) || parsedTarget <= 0)) {
+      setError('Please enter a valid target goal greater than 0.');
       return;
     }
 
     setIsSubmitting(true);
     setError('');
-
-    const isQuantitative = habitType === 'quantitative' || parsedTarget > 1;
 
     const payload: any = {
       title: name.trim(),
@@ -154,8 +153,8 @@ export const HabitModal: React.FC<HabitModalProps> = ({
       category,
       habit_type: isQuantitative ? 'quantitative' : 'binary',
       target_value: parsedTarget,
-      target_unit: isQuantitative ? (unit.trim() || 'units') : (unit.trim() || 'times'),
-      unit: isQuantitative ? (unit.trim() || 'units') : (unit.trim() || 'times'),
+      target_unit: isQuantitative ? (unit.trim() || 'units') : 'times',
+      unit: isQuantitative ? (unit.trim() || 'units') : 'times',
       frequency_type: frequencyType,
       frequency_days: frequencyType === 'custom_days' ? selectedDays.join(',') : '0,1,2,3,4,5,6',
       preferred_time: preferredTime,
@@ -318,43 +317,45 @@ export const HabitModal: React.FC<HabitModalProps> = ({
             </button>
           </div>
 
-          {/* User-defined Target Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 sm:p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
-            <div>
-              <label className="text-[11px] sm:text-xs font-bold text-slate-700 block mb-1">
-                Daily Target Amount
-              </label>
-              <input
-                type="number"
-                step="any"
-                min="0.1"
-                value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="e.g. 8, 30, 5000"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-black text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
-                required
-              />
+          {/* User-defined Target Inputs (Only shown for Measure Amount habits) */}
+          {habitType === 'quantitative' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-3 sm:p-3.5 bg-slate-50 border border-slate-200 rounded-2xl animate-in fade-in duration-150">
+              <div>
+                <label className="text-[11px] sm:text-xs font-bold text-slate-700 block mb-1">
+                  Daily Target Goal
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={targetValue}
+                  onChange={(e) => setTargetValue(e.target.value)}
+                  placeholder="e.g. 8, 30, 5000"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-black text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-[11px] sm:text-xs font-bold text-slate-700 block mb-1">
+                  Unit of Measurement
+                </label>
+                <input
+                  type="text"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  placeholder="e.g. glasses, steps, min, pages"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
+                  list="unit-suggestions"
+                  required
+                />
+                <datalist id="unit-suggestions">
+                  {COMMON_UNITS.map((u) => (
+                    <option key={u} value={u} />
+                  ))}
+                </datalist>
+              </div>
             </div>
-            <div>
-              <label className="text-[11px] sm:text-xs font-bold text-slate-700 block mb-1">
-                Unit of Measurement
-              </label>
-              <input
-                type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="e.g. glasses, steps, min, pages"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#6C5CE7]"
-                list="unit-suggestions"
-                required
-              />
-              <datalist id="unit-suggestions">
-                {COMMON_UNITS.map((u) => (
-                  <option key={u} value={u} />
-                ))}
-              </datalist>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Frequency & Time */}

@@ -66,6 +66,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const clientDate = date || reqUrl.searchParams.get('date') || request.headers.get('x-client-date');
     const logDate = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : formatDate(new Date());
 
+    // 1. Fetch existing log from Neon Postgres to check previous completion state
+    const existingLog = await prisma.habitLog.findUnique({
+      where: {
+        habit_id_date: {
+          habit_id: habitId,
+          date: logDate,
+        },
+      },
+    });
+
+    const wasAlreadyCompleted = Boolean(existingLog?.completed);
+    const existingXpEarned = existingLog?.xp_earned || 0;
+
     const targetVal = habit?.target_value || 1;
     const logValue = value !== undefined ? Number(value) : current_value !== undefined ? Number(current_value) : targetVal;
     const isCompleted = completed !== undefined ? Boolean(completed) : logValue >= targetVal;
@@ -74,12 +87,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const initialProfile = db.getProfileByUserId(userId);
     const initialLevel = initialProfile ? initialProfile.level : 1;
 
+    // 2. DATABASE-LEVEL ENFORCEMENT:
+    // XP is awarded ONCE and ONLY ONCE when transitioning from uncompleted to completed.
     let xpEarned = 0;
-    if (isCompleted) {
-      xpEarned = habit?.xp_per_completion || (habit?.difficulty === 'hard' ? 15 : habit?.difficulty === 'easy' ? 5 : 10);
+    const baseReward = habit?.xp_per_completion || (habit?.difficulty === 'hard' ? 15 : habit?.difficulty === 'easy' ? 5 : 10);
+
+    if (isCompleted && !wasAlreadyCompleted && existingXpEarned === 0) {
+      // First time reaching goal today!
+      xpEarned = baseReward;
       db.addXp(userId, xpEarned, 'habit_completion', habitId, `Completed ${habit?.title || habit?.name || 'Habit'}`);
 
-      // Persist XP to Neon Postgres
+      // Persist XP increment to Neon Postgres Profile
       await prisma.profile.updateMany({
         where: { user_id: userId },
         data: { xp: { increment: xpEarned } },
@@ -94,9 +112,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           description: `Completed ${habit?.title || habit?.name || 'Habit'}`,
         },
       }).catch(() => null);
+    } else {
+      // Goal already met previously or not met yet -> ZERO new XP
+      xpEarned = 0;
     }
 
-    // 2. Persist date-based HabitLog directly to Postgres via Prisma
+    const totalLogXp = wasAlreadyCompleted ? existingXpEarned : xpEarned;
+
+    // 3. Persist date-based HabitLog directly to Postgres via Prisma
     const habitLog = await prisma.habitLog.upsert({
       where: {
         habit_id_date: {
@@ -107,9 +130,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       update: {
         value: logValue,
         completed: isCompleted,
-        xp_earned: xpEarned,
+        xp_earned: totalLogXp,
         note: notes || note || null,
-        completed_at: isCompleted ? new Date() : null,
+        completed_at: isCompleted ? (existingLog?.completed_at || new Date()) : null,
       },
       create: {
         habit_id: habitId,
@@ -117,7 +140,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         date: logDate,
         value: logValue,
         completed: isCompleted,
-        xp_earned: xpEarned,
+        xp_earned: totalLogXp,
         note: notes || note || null,
         completed_at: isCompleted ? new Date() : null,
       },

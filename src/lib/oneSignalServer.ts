@@ -1,16 +1,20 @@
 interface SendPushParams {
   userId: number | string;
+  subscriptionId?: string;
   title: string;
   message: string;
   url?: string;
+  send_after?: string;
   data?: Record<string, any>;
 }
 
 export async function sendOneSignalPush({
   userId,
+  subscriptionId,
   title,
   message,
   url,
+  send_after,
   data,
 }: SendPushParams): Promise<{ success: boolean; id?: string; error?: string }> {
   const appId =
@@ -27,7 +31,7 @@ export async function sendOneSignalPush({
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://day-forge-alpha.vercel.app';
   const targetUrl = url ? (url.startsWith('http') ? url : `${baseUrl}${url}`) : `${baseUrl}/habits`;
 
-  const payload = {
+  const payload: any = {
     app_id: appId,
     include_aliases: {
       external_id: [String(userId)],
@@ -39,6 +43,8 @@ export async function sendOneSignalPush({
     chrome_web_icon: `${baseUrl}/icons/icon-192x192.png`,
     chrome_web_badge: `${baseUrl}/icons/icon-192x192.png`,
     firefox_icon: `${baseUrl}/icons/icon-192x192.png`,
+    priority: 10,
+    android_channel_id: undefined,
     web_buttons: [
       {
         id: 'open_app',
@@ -49,6 +55,14 @@ export async function sendOneSignalPush({
     ],
     data: data || {},
   };
+
+  if (subscriptionId) {
+    payload.include_subscription_ids = [subscriptionId];
+  }
+
+  if (send_after) {
+    payload.send_after = send_after;
+  }
 
   try {
     const res = await fetch('https://onesignal.com/api/v1/notifications', {
@@ -72,4 +86,18 @@ export async function sendOneSignalPush({
     console.error('Error dispatching OneSignal push:', error);
     return { success: false, error: error.message };
   }
+}
+
+export function calculateNextReminderDate(reminderTime: string): Date {
+  const [hours, minutes] = reminderTime.split(':').map(Number);
+  const now = new Date();
+
+  const target = new Date();
+  target.setHours(!isNaN(hours) ? hours : 9, !isNaN(minutes) ? minutes : 0, 0, 0);
+
+  if (target.getTime() <= now.getTime() + 60 * 1000) {
+    target.setDate(target.getDate() + 1);
+  }
+
+  return target;
 }

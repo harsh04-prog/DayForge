@@ -122,12 +122,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                       '/todos'
                     );
                     showSuccess(`Task Reminder: ${t.title}`, smart.message);
-                    api.post('/notifications/test', {
-                      title: `Task Reminder: ${t.title}`,
-                      message: smart.message,
-                      icon: 'check-square',
-                    }).catch(() => {});
-                    fetchNotifications();
                   }
                 }
               }
@@ -137,31 +131,35 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         // 2. Check habits
         try {
+          let habitsList: any[] = [];
+          const cachedHabitsRaw = localStorage.getItem('dayforge_habits_cache');
           const cachedDashRaw = localStorage.getItem('dayforge_dashboard_cache');
-          if (cachedDashRaw) {
-            const dash = JSON.parse(cachedDashRaw);
-            if (dash && Array.isArray(dash.habits)) {
-              for (const h of dash.habits) {
-                if (h.reminder_enabled && h.reminder_time && !h.today_completed && h.is_active) {
-                  const habitKey = `habit_${h.id}_${todayKey}`;
-                  if (h.reminder_time === currentHHMM && !firedReminders.has(habitKey)) {
-                    firedReminders.add(habitKey);
-                    const smart = getSmartHabitNotification(h.name || h.title, h.category, user?.full_name?.split(' ')[0], false);
-                    soundEffects.playComplete();
-                    await showLocalSmartNotification(
-                      smart.title,
-                      smart.message,
-                      smart.icon || 'zap',
-                      '/habits'
-                    );
-                    showSuccess(smart.title, smart.message);
-                    api.post('/notifications/test', {
-                      title: smart.title,
-                      message: smart.message,
-                      icon: smart.icon || 'zap',
-                    }).catch(() => {});
-                    fetchNotifications();
-                  }
+
+          if (cachedHabitsRaw) {
+            try { habitsList = JSON.parse(cachedHabitsRaw); } catch {}
+          }
+          if ((!habitsList || habitsList.length === 0) && cachedDashRaw) {
+            try {
+              const dash = JSON.parse(cachedDashRaw);
+              if (dash && Array.isArray(dash.habits)) habitsList = dash.habits;
+            } catch {}
+          }
+
+          if (Array.isArray(habitsList)) {
+            for (const h of habitsList) {
+              if (h.reminder_enabled && h.reminder_time && !h.today_completed && h.is_active !== false) {
+                const habitKey = `habit_${h.id}_${todayKey}`;
+                if (h.reminder_time === currentHHMM && !firedReminders.has(habitKey)) {
+                  firedReminders.add(habitKey);
+                  const smart = getSmartHabitNotification(h.name || h.title, h.category, user?.full_name?.split(' ')[0], false);
+                  soundEffects.playComplete();
+                  await showLocalSmartNotification(
+                    smart.title,
+                    smart.message,
+                    smart.icon || 'zap',
+                    '/habits'
+                  );
+                  showSuccess(smart.title, smart.message);
                 }
               }
             }

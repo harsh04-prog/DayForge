@@ -59,6 +59,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         data: { xp: { decrement: xpToDeduct } },
       }).catch(() => null);
 
+      await prisma.xPTransaction.create({
+        data: {
+          user_id: userId,
+          amount: -xpToDeduct,
+          source_type: 'habit_undo',
+          source_id: habitId,
+          description: `Undid ${habit?.title || habit?.name || 'Habit'}`,
+        },
+      }).catch(() => null);
+
       await prisma.habitLog.update({
         where: { id: existingLog.id },
         data: {

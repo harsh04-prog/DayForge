@@ -39,11 +39,14 @@ async function handleScheduledReminders(request: Request) {
     oneSignalId?: string;
   }> = [];
 
+  console.log(`[Cron] Checking habits for IST time: ${currentIstHHMM} (Date: ${todayStr})`);
+
   try {
     // 1. Fetch users from Neon Postgres
     const users = await prisma.user.findMany({
       where: forceUserId ? { id: forceUserId } : { is_active: true },
       include: {
+        settings: true,
         habits: {
           where: { is_active: true, is_archived: false },
           include: {
@@ -58,8 +61,11 @@ async function handleScheduledReminders(request: Request) {
       },
     });
 
+    let totalDueCount = 0;
+
     for (const user of users) {
       const firstName = user.full_name?.split(' ')[0] || user.username || 'Friend';
+      const userSubId = undefined;
 
       // 2. Evaluate Habits for this user
       for (const habit of user.habits) {
@@ -72,7 +78,7 @@ async function handleScheduledReminders(request: Request) {
         if (isForce) {
           shouldTrigger = true;
         } else if (habit.reminder_enabled && habit.reminder_time) {
-          // Compare reminder_time (e.g. "09:00" or "09:15") within 30 min window
+          // Compare reminder_time (e.g. "14:15") within 30 min window
           const [hHours, hMins] = habit.reminder_time.split(':').map(Number);
           if (!isNaN(hHours) && Math.abs(hHours - currentHour) <= 1) {
             shouldTrigger = true;
@@ -92,6 +98,8 @@ async function handleScheduledReminders(request: Request) {
         }
 
         if (shouldTrigger) {
+          totalDueCount++;
+
           // Check if user was already notified for this habit today
           const existingNotif = await prisma.notification.findFirst({
             where: {
@@ -111,14 +119,19 @@ async function handleScheduledReminders(request: Request) {
               firstName
             );
 
+            console.log(`[Cron] Sending notification to user ${user.id} (${firstName}): "${witty.title}" - "${witty.message}"`);
+
             // Send Push via OneSignal REST API
             const pushResult = await sendOneSignalPush({
               userId: user.id,
+              subscriptionId: userSubId,
               title: witty.title,
               message: witty.message,
               url: '/habits',
               data: { habitId: habit.id, type: 'habit_reminder' },
             });
+
+            console.log(`[Cron] OneSignal response for user ${user.id}:`, pushResult);
 
             // Save in database
             await prisma.notification.create({

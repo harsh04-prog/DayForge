@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import { db } from '@/lib/db';
 import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
 import { formatDate } from '@/lib/streakEngine';
+import { getWittyNotification } from '@/lib/smartNotifications';
+import { sendOneSignalPush, calculateNextReminderDate } from '@/lib/oneSignalServer';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -144,6 +146,25 @@ export async function POST(request: Request) {
       id: newHabit.id,
       user_id: userId,
     });
+
+    // Schedule OneSignal push reminder for upcoming reminder time
+    if (newHabit.reminder_enabled && newHabit.reminder_time) {
+      try {
+        const nextDate = calculateNextReminderDate(newHabit.reminder_time);
+        const witty = getWittyNotification(newHabit.name, newHabit.category);
+        console.log(`[Habit Creation] Scheduling OneSignal push for user ${userId} at ${nextDate.toISOString()}`);
+        sendOneSignalPush({
+          userId,
+          title: witty.title,
+          message: witty.message,
+          send_after: nextDate.toISOString(),
+          url: '/habits',
+          data: { habitId: newHabit.id, type: 'habit_scheduled_reminder' },
+        }).catch((e) => console.warn('Error scheduling push on habit creation:', e));
+      } catch (e) {
+        console.warn('OneSignal scheduling error on habit creation:', e);
+      }
+    }
 
     const latestVaultData = db.getUserVaultData(userId);
     const vaultToken = createUserDataVaultToken(latestVaultData);

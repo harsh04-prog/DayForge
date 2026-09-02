@@ -54,6 +54,28 @@ export const OneSignalInitializer: React.FC = () => {
       window.OneSignalDeferred.push(async function (OneSignal: any) {
         try {
           await OneSignal.login(String(user.id));
+
+          // Capture Player/Subscription ID
+          const subId = OneSignal.User?.PushSubscription?.id;
+          if (subId) {
+            fetch('/api/v1/notifications/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ subscriptionId: subId }),
+            }).catch(() => {});
+          }
+
+          // Listen for push subscription id updates
+          OneSignal.User?.PushSubscription?.addEventListener('change', (event: any) => {
+            const newSubId = event?.current?.id || OneSignal.User?.PushSubscription?.id;
+            if (newSubId) {
+              fetch('/api/v1/notifications/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscriptionId: newSubId }),
+              }).catch(() => {});
+            }
+          });
         } catch (e) {
           console.warn('OneSignal login error:', e);
         }
