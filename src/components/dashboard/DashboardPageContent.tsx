@@ -16,20 +16,37 @@ import { Sparkles, Plus, Trophy, ArrowRight } from 'lucide-react';
 import { Habit } from '@/types';
 import { api } from '@/services/api';
 
+import { useToast } from '@/context/ToastContext';
+
 export const DashboardPageContent: React.FC = () => {
   const { user } = useAuth();
+  const { showSuccess } = useToast();
   const { dashboardData, fetchDashboard, habits, challenges, fetchChallenges } = useHabits();
   const [filter, setFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening' | 'completed'>('all');
   const [isNewHabitOpen, setIsNewHabitOpen] = useState(false);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
-  const [greeting, setGreeting] = useState<string>('Welcome back');
+
+  // Deterministic greeting based on time of day (no flashing 'Welcome back' on mount)
+  const [greeting, setGreeting] = useState<string>(() => {
+    const hour = new Date().getHours();
+    return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  });
 
   useEffect(() => {
     fetchDashboard();
     fetchChallenges();
-    const hour = new Date().getHours();
-    setGreeting(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening');
-  }, [fetchDashboard, fetchChallenges]);
+
+    // Consume one-time Google OAuth welcome notification if returning from OAuth callback
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('auth') === 'success') {
+        showSuccess('Welcome back!', 'Google authentication successful.');
+        // Clean URL so refresh does NOT fire again
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    }
+  }, [fetchDashboard, fetchChallenges, showSuccess]);
 
   const firstName = user?.full_name?.split(' ')[0] || user?.username || 'Hero';
   const activeHabits = dashboardData?.habits || habits;

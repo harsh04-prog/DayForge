@@ -28,6 +28,9 @@ export const OneSignalInitializer: React.FC = () => {
       await OneSignal.init({
         appId: ONESIGNAL_APP_ID,
         allowLocalhostAsSecureOrigin: true,
+        welcomeNotification: {
+          disable: true,
+        },
         notifyButton: {
           enable: false,
         },

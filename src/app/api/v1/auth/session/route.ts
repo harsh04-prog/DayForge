@@ -8,6 +8,7 @@ import {
   getUserVaultDataFromRequest,
   createUserDataVaultToken,
 } from '@/lib/auth';
+import { recordDailyUsage } from '@/lib/usageEngine';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -67,6 +68,9 @@ export async function GET(request: Request) {
       response.cookies.set('dayforge_session', '', { path: '/', maxAge: 0 });
       return response;
     }
+
+    // Log daily active usage for this user (1 record per user per day in Neon Postgres)
+    recordDailyUsage(user.id);
 
     const profile = user.profile || db.getProfileByUserId(user.id);
     const settings = user.settings || db.getSettingsByUserId(user.id);

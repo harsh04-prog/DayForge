@@ -30,6 +30,7 @@ model User {
   xp_transactions XPTransaction[]
   notifications   Notification[]
   achievements    UserAchievement[]
+  daily_usages    DailyUsage[]
 
   @@index([email])
   @@index([username])
@@ -269,4 +270,19 @@ model UserAchievement {
   unlocked_at    DateTime    @default(now())
 
   @@unique([user_id, achievement_id])
+}
+
+model DailyUsage {
+  id            Int      @id @default(autoincrement())
+  user_id       Int
+  date          String   // YYYY-MM-DD format (IST local date)
+  platform      String?  @default("web") // "web", "pwa", "mobile"
+  session_count Int      @default(1)
+  first_seen    DateTime @default(now())
+  last_seen     DateTime @default(now())
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, date])
+  @@index([date])
+  @@index([user_id])
 }

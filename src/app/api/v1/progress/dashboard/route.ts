@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
 import { getLevelForXp } from '@/lib/gamification';
 import { formatDate } from '@/lib/streakEngine';
+import { recordDailyUsage } from '@/lib/usageEngine';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -19,6 +20,9 @@ export async function GET(request: Request) {
       }
     );
   }
+
+  // Record daily active usage for this user
+  recordDailyUsage(userId);
 
   const reqUrl = new URL(request.url);
   const clientDate = reqUrl.searchParams.get('date') || request.headers.get('x-client-date');

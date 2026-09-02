@@ -890,32 +890,7 @@ export const db = {
   },
   getNotificationsByUserId(userId: number): NotificationRecord[] {
     const data = loadDB();
-    let userNotifs = data.notifications.filter((n) => n.user_id === userId);
-    
-    // Seed starter notification if none exist
-    if (userNotifs.length === 0) {
-      const starter: NotificationRecord = {
-        id: data.notifications.length > 0 ? Math.max(...data.notifications.map((n) => n.id)) + 1 : 1,
-        user_id: userId,
-        habit_id: null,
-        notification_type: 'welcome',
-        category: 'motivation',
-        priority: 'medium',
-        title: 'Welcome to DayForge Companion! 👋',
-        message: 'Your personal habit forge is active. Check in on your daily routines to build compounding momentum.',
-        icon: 'sparkles',
-        action_url: '/',
-        action_type: 'navigate',
-        status: 'unread',
-        sent_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      };
-      data.notifications.push(starter);
-      saveDB(data);
-      userNotifs = [starter];
-    }
-    
-    return userNotifs;
+    return data.notifications.filter((n) => n.user_id === userId);
   },
 
   getNotificationById(id: number): NotificationRecord | undefined {
