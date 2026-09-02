@@ -1222,7 +1222,7 @@ export const db = {
       if (isDone) {
         xpAwarded = dailyXpReward;
         newlyCompleted = true;
-        db.addXP(userId, dailyXpReward, 'challenge_daily_checkin', challengeId, `Completed Daily Goal: ${ch.title}`);
+        db.addXp(userId, dailyXpReward, 'challenge_daily_checkin', challengeId, `Completed Daily Goal: ${ch.title}`);
       }
 
       log = {
@@ -1248,7 +1248,7 @@ export const db = {
         if (log.xp_awarded === 0) {
           xpAwarded = dailyXpReward;
           log.xp_awarded = dailyXpReward;
-          db.addXP(userId, dailyXpReward, 'challenge_daily_checkin', challengeId, `Completed Daily Goal: ${ch.title}`);
+          db.addXp(userId, dailyXpReward, 'challenge_daily_checkin', challengeId, `Completed Daily Goal: ${ch.title}`);
         }
       } else if (!isDone && log.completed) {
         log.completed = false;
@@ -1268,7 +1268,7 @@ export const db = {
     if (userCh.completed_days >= ch.duration_days && userCh.status !== 'completed') {
       userCh.status = 'completed';
       challengeCompletedNow = true;
-      db.addXP(userId, ch.xp_reward, 'challenge_full_completion', challengeId, `Mastered Challenge: ${ch.title} 🏆`);
+      db.addXp(userId, ch.xp_reward, 'challenge_full_completion', challengeId, `Mastered Challenge: ${ch.title} 🏆`);
     }
 
     saveDB(data);

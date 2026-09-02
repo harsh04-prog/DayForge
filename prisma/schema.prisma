@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              Int               @id @default(autoincrement())
+  email           String            @unique
+  username        String            @unique
+  full_name       String
+  hashed_password String?
+  google_id       String?           @unique
+  avatar_url      String?
+  is_active       Boolean           @default(true)
+  is_onboarded    Boolean           @default(false)
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+
+  profile         Profile?
+  settings        UserSettings?
+  habits          Habit[]
+  habit_logs      HabitLog[]
+  todos           Todo[]
+  user_challenges UserChallenge[]
+  challenge_logs  UserChallengeLog[]
+  xp_transactions XPTransaction[]
+  notifications   Notification[]
+  achievements    UserAchievement[]
+
+  @@index([email])
+  @@index([username])
+  @@index([google_id])
+}
+
+model Profile {
+  id                     Int      @id @default(autoincrement())
+  user_id                Int      @unique
+  user                   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  avatar_url             String   @default("male_1")
+  bio                    String   @default("Forging habits one day at a time.")
+  level                  Int      @default(1)
+  xp                     Int      @default(0)
+  current_streak         Int      @default(0)
+  longest_streak         Int      @default(0)
+  total_habits_completed Int      @default(0)
+  overall_consistency    Float    @default(0)
+  available_shields      Int      @default(2)
+  primary_goal           String   @default("Build Daily Consistency")
+  focus_areas            String   @default("Productivity, Health")
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+}
+
+model UserSettings {
+  id                      Int      @id @default(autoincrement())
+  user_id                 Int      @unique
+  user                    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  habit_reminders         Boolean  @default(true)
+  streak_reminders        Boolean  @default(true)
+  wellness_reminders      Boolean  @default(true)
+  progress_reminders      Boolean  @default(true)
+  motivational_messages   Boolean  @default(true)
+  weekly_review           Boolean  @default(true)
+  challenge_notifications Boolean  @default(true)
+  max_daily_reminders     Int      @default(10)
+  sound_enabled           Boolean  @default(true)
+  sound_type              String   @default("bell")
+  quiet_hours_enabled     Boolean  @default(false)
+  quiet_hours_start       String   @default("22:00")
+  quiet_hours_end         String   @default("07:00")
+  theme                   String   @default("light")
+  week_start_day          String   @default("monday")
+  time_format             String   @default("12h")
+  preferred_units         String   @default("metric")
+  profile_visibility      String   @default("public")
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+}
+
+model Habit {
+  id                   Int        @id @default(autoincrement())
+  user_id              Int
+  user                 User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title                String
+  name                 String
+  description          String?
+  icon                 String     @default("sparkles")
+  color                String     @default("#6C5CE7")
+  category             String     @default("General")
+  habit_type           String     @default("binary")
+  target_value         Float      @default(1)
+  target_unit          String?    @default("times")
+  unit                 String?    @default("times")
+  target_type          String     @default("boolean")
+  frequency_type       String     @default("daily")
+  frequency_days       String     @default("0,1,2,3,4,5,6")
+  target_days_per_week Int?
+  preferred_time       String     @default("anytime")
+  time_of_day          String     @default("anytime")
+  reminder_time        String?
+  reminder_enabled     Boolean    @default(false)
+  difficulty           String     @default("medium")
+  xp_per_completion    Int        @default(10)
+  sort_order           Int        @default(0)
+  current_streak       Int        @default(0)
+  longest_streak       Int        @default(0)
+  total_completions    Int        @default(0)
+  is_active            Boolean    @default(true)
+  is_paused            Boolean    @default(false)
+  is_archived          Boolean    @default(false)
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
+
+  logs                 HabitLog[]
+
+  @@index([user_id])
+}
+
+model HabitLog {
+  id           Int       @id @default(autoincrement())
+  habit_id     Int
+  habit        Habit     @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+  user_id      Int
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  date         String    // Format: YYYY-MM-DD
+  value        Float     @default(1)
+  completed    Boolean   @default(true)
+  xp_earned    Int       @default(0)
+  note         String?
+  completed_at DateTime?
+  created_at   DateTime  @default(now())
+
+  @@unique([habit_id, date])
+  @@index([user_id, date])
+}
+
+model Todo {
+  id               Int       @id @default(autoincrement())
+  user_id          Int
+  user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title            String
+  completed        Boolean   @default(false)
+  priority         String    @default("medium")
+  category         String    @default("General")
+  due_date         String?
+  reminder_time    String?
+  reminder_enabled Boolean   @default(false)
+  completed_at     DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  @@index([user_id])
+  @@index([user_id, completed])
+}
+
+model Challenge {
+  id                 Int               @id @default(autoincrement())
+  code               String            @unique
+  title              String
+  name               String
+  description        String
+  category           String
+  difficulty         String
+  duration_days      Int               @default(7)
+  daily_target       Float             @default(1)
+  unit               String            @default("times")
+  xp_reward          Int               @default(100)
+  daily_xp_reward    Int               @default(15)
+  color              String            @default("#FFB547")
+  icon               String            @default("trophy")
+  participants_count Int               @default(0)
+  is_official        Boolean           @default(true)
+  created_at         DateTime          @default(now())
+
+  participants       UserChallenge[]
+  logs               UserChallengeLog[]
+}
+
+model UserChallenge {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  challenge_id   Int
+  challenge      Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  status         String    @default("active") // active, completed, abandoned
+  joined_at      DateTime  @default(now())
+  completed_at   DateTime?
+  completed_days Int       @default(0)
+  updated_at     DateTime  @updatedAt
+
+  @@unique([user_id, challenge_id])
+  @@index([user_id])
+}
+
+model UserChallengeLog {
+  id             Int       @id @default(autoincrement())
+  user_id        Int
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  challenge_id   Int
+  challenge      Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  date           String    // Format: YYYY-MM-DD
+  progress_value Float     @default(0)
+  target_value   Float     @default(1)
+  completed      Boolean   @default(false)
+  xp_awarded     Int       @default(0)
+  logged_at      DateTime  @default(now())
+
+  @@unique([user_id, challenge_id, date])
+  @@index([user_id, date])
+}
+
+model XPTransaction {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  amount      Int
+  source_type String
+  source_id   Int?
+  description String?
+  created_at  DateTime @default(now())
+
+  @@index([user_id])
+}
+
+model Notification {
+  id           Int       @id @default(autoincrement())
+  user_id      Int
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title        String
+  message      String
+  type         String    @default("habit_reminder")
+  habit_id     Int?
+  todo_id      Int?
+  challenge_id Int?
+  action_url   String?
+  scheduled_at DateTime?
+  sent_at      DateTime?
+  read_at      DateTime?
+  is_read      Boolean   @default(false)
+  created_at   DateTime  @default(now())
+
+  @@index([user_id, is_read])
+}
+
+model Achievement {
+  id             Int               @id @default(autoincrement())
+  code           String            @unique
+  name           String
+  description    String
+  icon           String
+  category       String
+  xp_reward      Int               @default(50)
+  required_count Int               @default(1)
+  badge_tier     String            @default("bronze")
+
+  unlocked_by    UserAchievement[]
+}
+
+model UserAchievement {
+  id             Int         @id @default(autoincrement())
+  user_id        Int
+  user           User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  achievement_id Int
+  achievement    Achievement @relation(fields: [achievement_id], references: [id], onDelete: Cascade)
+  unlocked_at    DateTime    @default(now())
+
+  @@unique([user_id, achievement_id])
+}

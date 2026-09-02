@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refreshSession]);
 
   const login = async (email: string, password: string, rememberMe: boolean = true): Promise<User> => {
-    const cleanEmail = email.toLowerCase().trim();
+    const cleanId = email.toLowerCase().trim();
 
     // Check if client has local vault token for cross-container serverless recovery
     let vaultToken: string | undefined;
@@ -129,13 +129,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedRegistry = localStorage.getItem('dayforge_user_registry');
         if (storedRegistry) {
           const registry = JSON.parse(storedRegistry);
-          vaultToken = registry[cleanEmail]?.vault_token;
+          vaultToken =
+            registry[cleanId]?.vault_token ||
+            registry[cleanId] ||
+            (Object.values(registry) as any[]).find((r: any) => r?.email === cleanId || r?.username === cleanId)
+              ?.vault_token;
+        }
+        if (!vaultToken) {
+          vaultToken = localStorage.getItem('dayforge_last_vault_token') || undefined;
         }
       } catch {}
     }
 
     const res = await api.post<{ access_token: string; user: User; vault_token?: string }>('/auth/login', {
-      email: cleanEmail,
+      email: cleanId,
       password,
       remember_me: rememberMe,
       vault_token: vaultToken,
@@ -149,29 +156,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const storedRegistry = localStorage.getItem('dayforge_user_registry') || '{}';
           const registry = JSON.parse(storedRegistry);
-          registry[cleanEmail] = {
+          const userRec = {
             id: res.data.user.id,
-            email: cleanEmail,
-            username: res.data.user.username,
+            email: res.data.user.email.toLowerCase().trim(),
+            username: res.data.user.username.toLowerCase().trim(),
             full_name: res.data.user.full_name,
             vault_token: res.data.vault_token,
           };
+          registry[res.data.user.email.toLowerCase().trim()] = userRec;
+          registry[res.data.user.username.toLowerCase().trim()] = userRec;
           localStorage.setItem('dayforge_user_registry', JSON.stringify(registry));
+          localStorage.setItem('dayforge_last_vault_token', res.data.vault_token);
         } catch {}
       }
     }
 
     setToken(newToken);
     setUser(res.data.user);
+    if ((res.data.user as any).profile) setProfile((res.data.user as any).profile);
+    if ((res.data.user as any).settings) setSettings((res.data.user as any).settings);
     return res.data.user;
   };
 
   const register = async (payload: { email: string; username: string; full_name: string; password: string; avatar_url?: string }): Promise<User> => {
     const cleanEmail = payload.email.toLowerCase().trim();
+    const cleanUsername = payload.username.toLowerCase().trim();
 
     const res = await api.post<{ access_token: string; user: User; vault_token?: string }>('/auth/register', {
       ...payload,
       email: cleanEmail,
+      username: cleanUsername,
     });
 
     const newToken = res.data.access_token;
@@ -182,20 +196,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const storedRegistry = localStorage.getItem('dayforge_user_registry') || '{}';
           const registry = JSON.parse(storedRegistry);
-          registry[cleanEmail] = {
+          const userRec = {
             id: res.data.user.id,
             email: cleanEmail,
-            username: payload.username.toLowerCase().trim(),
+            username: cleanUsername,
             full_name: payload.full_name,
             vault_token: res.data.vault_token,
           };
+          registry[cleanEmail] = userRec;
+          registry[cleanUsername] = userRec;
           localStorage.setItem('dayforge_user_registry', JSON.stringify(registry));
+          localStorage.setItem('dayforge_last_vault_token', res.data.vault_token);
         } catch {}
       }
     }
 
     setToken(newToken);
     setUser(res.data.user);
+    if ((res.data.user as any).profile) setProfile((res.data.user as any).profile);
+    if ((res.data.user as any).settings) setSettings((res.data.user as any).settings);
     return res.data.user;
   };
 

@@ -11,6 +11,7 @@ import { Card } from '@/components/common/Card';
 import { DayForgeLogo } from '@/components/common/DayForgeLogo';
 import { AvatarSelector } from '@/components/common/AvatarSelector';
 import { PublicInstallButton } from '@/components/pwa/PublicInstallButton';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { Lock, Mail, User, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -215,6 +216,17 @@ export default function RegisterPage() {
                 >
                   Continue
                 </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-3 font-bold text-slate-400">Or sign up with</span>
+                  </div>
+                </div>
+
+                <GoogleSignInButton text="Sign up with Google" />
               </motion.form>
             )}
 

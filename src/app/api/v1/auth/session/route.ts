@@ -8,11 +8,20 @@ import {
   createUserDataVaultToken,
 } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   try {
     const authUser = getAuthUserFromRequest(request);
     if (!authUser) {
-      return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { detail: 'Unauthorized' },
+        {
+          status: 401,
+          headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+        }
+      );
     }
 
     let user = db.getUserById(authUser.userId);
@@ -22,7 +31,13 @@ export async function GET(request: Request) {
     }
 
     if (!user || !user.is_active) {
-      return NextResponse.json({ detail: 'User not found or inactive' }, { status: 401 });
+      return NextResponse.json(
+        { detail: 'User not found or inactive' },
+        {
+          status: 401,
+          headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+        }
+      );
     }
 
     // Reconcile client's vault data if local instance has missing data
@@ -52,6 +67,7 @@ export async function GET(request: Request) {
     });
 
     res.headers.set('x-dayforge-vault-token', vaultToken);
+    res.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
 
     return setAuthCookies(res, refreshedToken, {
       id: user.id,
@@ -67,7 +83,10 @@ export async function GET(request: Request) {
     console.error('Session retrieval error:', error);
     return NextResponse.json(
       { detail: error.message || 'Failed to retrieve session' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
     );
   }
 }

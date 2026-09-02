@@ -4,9 +4,20 @@ import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultT
 import { getLevelForXp } from '@/lib/gamification';
 import { formatDate } from '@/lib/streakEngine';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   const userId = getUserIdFromRequest(request);
-  if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json(
+      { detail: 'Unauthorized' },
+      {
+        status: 401,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
+    );
+  }
 
   // Reconcile client's vault data if container has missing data
   const userVault = getUserVaultDataFromRequest(request);
@@ -14,11 +25,14 @@ export async function GET(request: Request) {
     db.syncUserDataFromVault(userId, userVault);
   }
 
+  const reqUrl = new URL(request.url);
+  const clientDate = reqUrl.searchParams.get('date') || request.headers.get('x-client-date');
+  const today = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : formatDate(new Date());
+
   const user = db.getUserById(userId);
   const profile = db.getProfileByUserId(userId);
   const stats = db.recalculateUserStats(userId);
   const rawHabits = db.getHabitsByUserId(userId, false);
-  const today = formatDate(new Date());
 
   const levelInfo = getLevelForXp(profile?.xp || 0);
 
@@ -58,6 +72,7 @@ export async function GET(request: Request) {
   const vaultToken = createUserDataVaultToken(latestVaultData);
 
   const res = NextResponse.json({
+    date: today,
     profile: profile || {
       id: 1,
       user_id: userId,
@@ -95,5 +110,6 @@ export async function GET(request: Request) {
   });
 
   res.headers.set('x-dayforge-vault-token', vaultToken);
+  res.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
   return res;
 }

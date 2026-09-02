@@ -1,17 +1,35 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 import { db } from '@/lib/db';
 import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
 import { getLevelForXp } from '@/lib/gamification';
 import { formatDate } from '@/lib/streakEngine';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = getUserIdFromRequest(request);
-  if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json(
+      { detail: 'Unauthorized' },
+      {
+        status: 401,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
+    );
+  }
 
   const resolvedParams = await params;
   const habitId = parseInt(resolvedParams.id, 10);
   if (isNaN(habitId)) {
-    return NextResponse.json({ detail: 'Invalid habit ID' }, { status: 400 });
+    return NextResponse.json(
+      { detail: 'Invalid habit ID' },
+      {
+        status: 400,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
+    );
   }
 
   // 1. Reconcile client vault if cold serverless container
@@ -20,9 +38,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     db.syncUserDataFromVault(userId, userVault);
   }
 
-  const habit = db.getHabitById(habitId);
+  let habit = await prisma.habit.findUnique({
+    where: { id: habitId },
+  });
+
   if (!habit || Number(habit.user_id) !== Number(userId)) {
-    return NextResponse.json({ detail: 'Habit not found' }, { status: 404 });
+    const localHabit = db.getHabitById(habitId);
+    if (!localHabit || Number(localHabit.user_id) !== Number(userId)) {
+      return NextResponse.json(
+        { detail: 'Habit not found' },
+        {
+          status: 404,
+          headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+        }
+      );
+    }
   }
 
   try {
@@ -32,9 +62,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     } catch {}
 
     const { date, value, current_value, completed, notes, note } = body;
-    const logDate = date || formatDate(new Date());
+    const reqUrl = new URL(request.url);
+    const clientDate = date || reqUrl.searchParams.get('date') || request.headers.get('x-client-date');
+    const logDate = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : formatDate(new Date());
 
-    const targetVal = habit.target_value || 1;
+    const targetVal = habit?.target_value || 1;
     const logValue = value !== undefined ? Number(value) : current_value !== undefined ? Number(current_value) : targetVal;
     const isCompleted = completed !== undefined ? Boolean(completed) : logValue >= targetVal;
 
@@ -44,9 +76,39 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     let xpEarned = 0;
     if (isCompleted) {
-      xpEarned = habit.xp_per_completion || (habit.difficulty === 'hard' ? 15 : habit.difficulty === 'easy' ? 5 : 10);
-      db.addXp(userId, xpEarned, 'habit_completion', habitId, `Completed ${habit.title || habit.name}`);
+      xpEarned = habit?.xp_per_completion || (habit?.difficulty === 'hard' ? 15 : habit?.difficulty === 'easy' ? 5 : 10);
+      db.addXp(userId, xpEarned, 'habit_completion', habitId, `Completed ${habit?.title || habit?.name || 'Habit'}`);
     }
+
+    // 2. Persist date-based HabitLog directly to Postgres via Prisma
+    const habitLog = await prisma.habitLog.upsert({
+      where: {
+        habit_id_date: {
+          habit_id: habitId,
+          date: logDate,
+        },
+      },
+      update: {
+        value: logValue,
+        completed: isCompleted,
+        xp_earned: xpEarned,
+        note: notes || note || null,
+        completed_at: isCompleted ? new Date() : null,
+      },
+      create: {
+        habit_id: habitId,
+        user_id: userId,
+        date: logDate,
+        value: logValue,
+        completed: isCompleted,
+        xp_earned: xpEarned,
+        note: notes || note || null,
+        completed_at: isCompleted ? new Date() : null,
+      },
+    }).catch((e) => {
+      console.warn('Prisma HabitLog upsert warning:', e.message);
+      return null;
+    });
 
     const logRecord = db.createHabitLog({
       habit_id: habitId,
@@ -69,7 +131,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const res = NextResponse.json({
       success: true,
-      log: logRecord,
+      log: habitLog || logRecord,
       habit: updatedHabit,
       user_stats: userStats,
       xp_awarded: xpEarned,
@@ -82,9 +144,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
 
     res.headers.set('x-dayforge-vault-token', vaultToken);
+    res.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
     return res;
   } catch (error: any) {
     console.error('Complete habit error:', error);
-    return NextResponse.json({ detail: error.message || 'Failed to complete habit.' }, { status: 500 });
+    return NextResponse.json(
+      { detail: error.message || 'Failed to complete habit.' },
+      {
+        status: 500,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
+    );
   }
 }

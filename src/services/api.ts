@@ -25,6 +25,11 @@ api.interceptors.request.use(
       if (vaultData) {
         config.headers['x-dayforge-vault-data'] = vaultData;
       }
+
+      const userVault = localStorage.getItem('dayforge_last_vault_token');
+      if (userVault) {
+        config.headers['x-dayforge-user-vault'] = userVault;
+      }
     }
     return config;
   },

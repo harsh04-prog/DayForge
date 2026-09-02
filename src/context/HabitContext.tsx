@@ -37,6 +37,15 @@ interface HabitContextType {
 
 const HabitContext = createContext<HabitContextType | undefined>(undefined);
 
+const getClientLocalDate = (): string => {
+  if (typeof window === 'undefined') return new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user, refreshSession } = useAuth();
   const { showXPToast, showSuccess, showError } = useToast();
@@ -44,10 +53,22 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [habits, setHabits] = useState<Habit[]>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const todayStr = getClientLocalDate();
         const cached = localStorage.getItem('dayforge_dashboard_cache');
+        const cachedDate = localStorage.getItem('dayforge_dashboard_cache_date');
         if (cached) {
           const parsed = JSON.parse(cached) as DashboardData;
-          if (parsed && Array.isArray(parsed.habits)) return parsed.habits;
+          if (parsed && Array.isArray(parsed.habits)) {
+            // If cached on a previous day, reset today's completion status to pending
+            if (cachedDate && cachedDate !== todayStr) {
+              return parsed.habits.map((h) => ({
+                ...h,
+                today_completed: false,
+                today_progress: 0,
+              }));
+            }
+            return parsed.habits;
+          }
         }
       } catch {}
     }
@@ -59,8 +80,25 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(() => {
     if (typeof window !== 'undefined') {
       try {
+        const todayStr = getClientLocalDate();
         const cached = localStorage.getItem('dayforge_dashboard_cache');
-        if (cached) return JSON.parse(cached) as DashboardData;
+        const cachedDate = localStorage.getItem('dayforge_dashboard_cache_date');
+        if (cached) {
+          const parsed = JSON.parse(cached) as DashboardData;
+          if (cachedDate && cachedDate !== todayStr) {
+            return {
+              ...parsed,
+              today_completed_count: 0,
+              today_completion_rate: 0,
+              habits: parsed.habits.map((h) => ({
+                ...h,
+                today_completed: false,
+                today_progress: 0,
+              })),
+            };
+          }
+          return parsed;
+        }
       } catch {}
     }
     return null;
@@ -73,7 +111,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await api.get<DashboardData>('/progress/dashboard');
+      const todayStr = getClientLocalDate();
+      const res = await api.get<DashboardData>(`/progress/dashboard?date=${todayStr}`, {
+        headers: { 'x-client-date': todayStr },
+      });
       if (res.data) {
         setDashboardData(res.data);
         setHabits(res.data.habits || []);
@@ -81,6 +122,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (typeof window !== 'undefined') {
           try {
             localStorage.setItem('dayforge_dashboard_cache', JSON.stringify(res.data));
+            localStorage.setItem('dayforge_dashboard_cache_date', todayStr);
           } catch {}
         }
 
@@ -255,6 +297,7 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         completed: true,
         current_value: currentValue,
         notes,
+        date: getClientLocalDate(),
       });
 
       const data = res.data;

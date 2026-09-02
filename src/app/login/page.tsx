@@ -9,6 +9,7 @@ import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { DayForgeLogo } from '@/components/common/DayForgeLogo';
 import { PublicInstallButton } from '@/components/pwa/PublicInstallButton';
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -164,6 +165,17 @@ export default function LoginPage() {
               Sign In
             </Button>
           </form>
+
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-3 font-bold text-slate-400">Or continue with</span>
+            </div>
+          </div>
+
+          <GoogleSignInButton text="Sign in with Google" />
         </Card>
 
         {/* Bottom Link to Sign Up */}

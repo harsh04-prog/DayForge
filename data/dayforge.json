@@ -386,10 +386,10 @@
       "user_id": 3,
       "avatar_url": "male-3d-1",
       "bio": null,
-      "level": 1,
-      "xp": 50,
+      "level": 2,
+      "xp": 145,
       "current_streak": 0,
-      "longest_streak": 0,
+      "longest_streak": 1,
       "total_habits_completed": 0,
       "overall_consistency": 0,
       "available_shields": 2,
@@ -1718,34 +1718,6 @@
       "id": 2,
       "created_at": "2026-08-29T15:40:16.944Z",
       "updated_at": "2026-08-29T15:40:16.944Z"
-    },
-    {
-      "user_id": 3,
-      "title": "Morning Habit",
-      "description": null,
-      "category": "Health",
-      "color": "#06B6D4",
-      "icon": "droplet",
-      "frequency_type": "daily",
-      "frequency_days": null,
-      "target_days_per_week": null,
-      "target_value": 2,
-      "target_unit": "times",
-      "target_type": "boolean",
-      "time_of_day": "morning",
-      "reminder_time": null,
-      "reminder_enabled": false,
-      "is_active": true,
-      "is_archived": false,
-      "sort_order": 0,
-      "current_streak": 0,
-      "longest_streak": 0,
-      "total_completions": 0,
-      "xp_per_completion": 15,
-      "difficulty": "easy",
-      "id": 3,
-      "created_at": "2026-08-29T15:41:38.635Z",
-      "updated_at": "2026-08-29T15:41:38.635Z"
     },
     {
       "user_id": 3,
@@ -5873,6 +5845,69 @@
       "source_id": 73,
       "description": "Completed Mastery Habit #3",
       "created_at": "2026-09-01T13:46:15.637Z"
+    },
+    {
+      "id": 113,
+      "user_id": 3,
+      "amount": 5,
+      "source_type": "todo_completion",
+      "source_id": 19,
+      "description": "Completed Task: uytv",
+      "created_at": "2026-09-01T14:03:47.393Z"
+    },
+    {
+      "id": 114,
+      "user_id": 3,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 3,
+      "description": "Completed Morning Habit",
+      "created_at": "2026-09-01T14:03:56.290Z"
+    },
+    {
+      "id": 115,
+      "user_id": 3,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 3,
+      "description": "Completed Morning Habit",
+      "created_at": "2026-09-01T14:03:59.204Z"
+    },
+    {
+      "id": 116,
+      "user_id": 3,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 3,
+      "description": "Completed Morning Habit",
+      "created_at": "2026-09-01T14:04:01.625Z"
+    },
+    {
+      "id": 117,
+      "user_id": 3,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 3,
+      "description": "Completed Morning Habit",
+      "created_at": "2026-09-01T14:04:05.213Z"
+    },
+    {
+      "id": 118,
+      "user_id": 3,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 3,
+      "description": "Completed Morning Habit",
+      "created_at": "2026-09-01T14:04:07.576Z"
+    },
+    {
+      "id": 119,
+      "user_id": 3,
+      "amount": 15,
+      "source_type": "habit_completion",
+      "source_id": 3,
+      "description": "Completed Morning Habit",
+      "created_at": "2026-09-01T14:04:09.858Z"
     }
   ],
   "notifications": [
@@ -7180,6 +7215,10 @@
   ],
   "deleted_todos": [
     14,
-    17
+    17,
+    19
+  ],
+  "deleted_habits": [
+    3
   ]
 }

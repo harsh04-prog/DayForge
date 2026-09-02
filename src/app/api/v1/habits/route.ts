@@ -3,10 +3,19 @@ import { db } from '@/lib/db';
 import { getUserIdFromRequest, getUserVaultDataFromRequest, createUserDataVaultToken } from '@/lib/auth';
 import { formatDate } from '@/lib/streakEngine';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   const userId = getUserIdFromRequest(request);
   if (!userId) {
-    return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { detail: 'Unauthorized' },
+      {
+        status: 401,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
+    );
   }
 
   // Reconcile client vault if container has missing data
@@ -17,16 +26,24 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const includeArchived = searchParams.get('include_archived') === 'true';
+  const clientDate = searchParams.get('date') || request.headers.get('x-client-date');
+  const today = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : formatDate(new Date());
 
   const habits = db.getHabitsByUserId(userId, includeArchived);
-  const today = formatDate(new Date());
 
   // Attach today's log to each habit
   const enrichedHabits = habits.map((h) => {
     const todayLog = db.getLogByHabitAndDate(h.id, today);
+    const isCompleted = Boolean(todayLog?.completed);
+    const habitName = h.name || h.title || 'Daily Habit';
     return {
       ...h,
+      title: habitName,
+      name: habitName,
+      today_completed: isCompleted,
+      today_progress: isCompleted ? (h.target_value || 1) : 0,
       today_log: todayLog || null,
+      completed_today: isCompleted,
     };
   });
 
@@ -35,13 +52,20 @@ export async function GET(request: Request) {
 
   const res = NextResponse.json(enrichedHabits);
   res.headers.set('x-dayforge-vault-token', vaultToken);
+  res.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
   return res;
 }
 
 export async function POST(request: Request) {
   const userId = getUserIdFromRequest(request);
   if (!userId) {
-    return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { detail: 'Unauthorized' },
+      {
+        status: 401,
+        headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' },
+      }
+    );
   }
 
   // Reconcile client vault if container has missing data
@@ -98,6 +122,7 @@ export async function POST(request: Request) {
 
     const res = NextResponse.json(newHabit, { status: 201 });
     res.headers.set('x-dayforge-vault-token', vaultToken);
+    res.headers.set('Cache-Control', 'private, no-cache, no-store, max-age=0, must-revalidate');
     return res;
   } catch (error: any) {
     console.error('Create habit error:', error);
