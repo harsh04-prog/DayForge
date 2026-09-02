@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, Flame, Plus, Minus } from 'lucide-react';
+import { Check, Flame } from 'lucide-react';
 import { Habit } from '../../types';
 import { HabitIcon } from '../common/IconHelper';
 import { Badge } from '../common/Badge';
@@ -26,31 +26,33 @@ export const TodayHabitCard: React.FC<TodayHabitCardProps> = ({ habit }) => {
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setIsUpdating(true);
-    try {
-      if (isCompleted) {
-        await undoHabit(habit.id);
-      } else {
-        await completeHabit(habit.id, isQuantitative ? targetVal : 1);
-      }
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+    if (isUpdating) return;
 
-  const handleAdjustValue = async (delta: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const newVal = Math.max(0, currentVal + delta);
-    setIsUpdating(true);
-    try {
-      if (newVal === 0 && isCompleted) {
-        await undoHabit(habit.id);
-      } else {
-        await completeHabit(habit.id, newVal);
+    if (isQuantitative) {
+      // If already reached daily target, further taps do nothing per requirements
+      if (isCompleted || currentVal >= targetVal) {
+        return;
       }
-    } finally {
-      setIsUpdating(false);
+      setIsUpdating(true);
+      try {
+        // Increment progress by 1 unit toward the daily target
+        const nextVal = currentVal + 1;
+        await completeHabit(habit.id, nextVal);
+      } finally {
+        setIsUpdating(false);
+      }
+    } else {
+      // Simple Yes/No: mark complete or undo
+      setIsUpdating(true);
+      try {
+        if (isCompleted) {
+          await undoHabit(habit.id);
+        } else {
+          await completeHabit(habit.id, 1);
+        }
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
@@ -139,7 +141,7 @@ export const TodayHabitCard: React.FC<TodayHabitCardProps> = ({ habit }) => {
         </Link>
 
         {/* Right / Bottom Action Controls */}
-        <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0 w-full sm:w-auto">
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0 w-full sm:w-auto">
           
           {/* Quantitative status text on desktop */}
           {isQuantitative && (
@@ -148,49 +150,35 @@ export const TodayHabitCard: React.FC<TodayHabitCardProps> = ({ habit }) => {
                 {currentVal} / {targetVal} {habit.unit || 'units'}
               </span>
               <span className="text-[10px] font-semibold text-slate-400">
-                {progressPct}% completed
+                {isCompleted ? 'Goal reached' : `${progressPct}% completed`}
               </span>
             </div>
           )}
 
-          {/* Stepper Buttons for quantitative habits (min 40px touch targets) */}
-          {isQuantitative && (
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
-              <button
-                type="button"
-                onClick={(e) => handleAdjustValue(-1, e)}
-                disabled={currentVal <= 0 || isUpdating}
-                className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white text-slate-700 hover:text-slate-900 active:bg-slate-100 disabled:opacity-30 transition-colors shadow-xs"
-                title="Decrease"
-                aria-label="Decrease progress"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleAdjustValue(1, e)}
-                disabled={isUpdating}
-                className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white text-slate-700 hover:text-slate-900 active:bg-slate-100 transition-colors shadow-xs"
-                title="Increase"
-                aria-label="Increase progress"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Big Checkmark Tap Button (min 44px on mobile & desktop) */}
+          {/* Single Checkmark Tap Button (Acts as +1 on each tap for Measure Amount) */}
           <button
             type="button"
             onClick={handleToggle}
-            disabled={isUpdating}
-            className={`min-h-[44px] min-w-[44px] h-11 sm:h-12 sm:w-12 px-4 sm:px-0 rounded-2xl flex items-center justify-center transition-all duration-200 focus:outline-none select-none active:scale-95 flex-1 sm:flex-initial ${
+            disabled={isUpdating || (isQuantitative && isCompleted)}
+            className={`min-h-[44px] min-w-[44px] h-11 sm:h-12 sm:w-12 px-4 sm:px-0 rounded-2xl flex items-center justify-center transition-all duration-200 focus:outline-none select-none flex-1 sm:flex-initial ${
               isCompleted
-                ? 'bg-[#6C5CE7] text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-[#6C5CE7]/15 text-slate-400 border border-slate-200 hover:border-[#6C5CE7]/50 hover:text-[#6C5CE7]'
+                ? 'bg-[#6C5CE7] text-white shadow-xs cursor-default'
+                : 'bg-slate-100 hover:bg-[#6C5CE7]/15 text-slate-400 border border-slate-200 hover:border-[#6C5CE7]/50 hover:text-[#6C5CE7] active:scale-95'
             }`}
-            title={isCompleted ? 'Completed today (tap to undo)' : 'Tap to mark completed'}
-            aria-label={isCompleted ? 'Mark uncompleted' : 'Mark completed'}
+            title={
+              isCompleted
+                ? 'Completed today!'
+                : isQuantitative
+                ? `Tap to record +1 ${habit.unit || 'unit'} (${currentVal + 1}/${targetVal})`
+                : 'Tap to mark completed'
+            }
+            aria-label={
+              isCompleted
+                ? 'Completed today'
+                : isQuantitative
+                ? `Tap to add 1 unit (${currentVal}/${targetVal})`
+                : 'Mark completed'
+            }
           >
             {isCompleted ? (
               <motion.div
@@ -202,6 +190,13 @@ export const TodayHabitCard: React.FC<TodayHabitCardProps> = ({ habit }) => {
                 <Check className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3]" />
                 <span className="sm:hidden text-xs font-bold">Done</span>
               </motion.div>
+            ) : isQuantitative ? (
+              <div className="flex items-center gap-1.5">
+                <Check className="w-5 h-5 opacity-60 group-hover:opacity-100" />
+                <span className="sm:hidden text-xs font-bold text-slate-700">
+                  +1 ({currentVal}/{targetVal})
+                </span>
+              </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <Check className="w-5 h-5 opacity-60 group-hover:opacity-100" />

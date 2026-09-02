@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Check, Flame, Plus, Minus, Trophy, Sparkles } from 'lucide-react';
+import { Check, Flame, Trophy, Sparkles } from 'lucide-react';
 import { HabitIcon } from '../common/IconHelper';
 import { Badge } from '../common/Badge';
 import { api } from '../../services/api';
@@ -39,25 +39,25 @@ export const TodayChallengeCard: React.FC<TodayChallengeCardProps> = ({ challeng
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setIsUpdating(true);
-    try {
-      await checkinChallenge(challenge.id, isCompleted ? 0 : targetVal, true);
-      if (onRefresh) onRefresh();
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+    if (isUpdating) return;
 
-  const handleAdjustValue = async (delta: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const newVal = Math.max(0, currentVal + delta);
-    setIsUpdating(true);
-    try {
-      await checkinChallenge(challenge.id, newVal, true);
-      if (onRefresh) onRefresh();
-    } finally {
-      setIsUpdating(false);
+    if (isQuantitative) {
+      if (isCompleted || currentVal >= targetVal) return;
+      setIsUpdating(true);
+      try {
+        await checkinChallenge(challenge.id, currentVal + 1, true);
+        if (onRefresh) onRefresh();
+      } finally {
+        setIsUpdating(false);
+      }
+    } else {
+      setIsUpdating(true);
+      try {
+        await checkinChallenge(challenge.id, isCompleted ? 0 : targetVal, true);
+        if (onRefresh) onRefresh();
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
@@ -148,44 +148,30 @@ export const TodayChallengeCard: React.FC<TodayChallengeCardProps> = ({ challeng
             </div>
           )}
 
-          {/* Stepper Buttons for quantitative challenges */}
-          {isQuantitative && (
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
-              <button
-                type="button"
-                onClick={(e) => handleAdjustValue(-1, e)}
-                disabled={currentVal <= 0 || isUpdating}
-                className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white text-slate-700 hover:text-slate-900 active:bg-slate-100 disabled:opacity-30 transition-colors shadow-xs"
-                title="Decrease"
-                aria-label="Decrease challenge progress"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => handleAdjustValue(1, e)}
-                disabled={isUpdating}
-                className="w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-white text-slate-700 hover:text-slate-900 active:bg-slate-100 transition-colors shadow-xs"
-                title="Increase"
-                aria-label="Increase challenge progress"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-
-          {/* Big Checkmark / Check In Tap Button */}
+          {/* Big Checkmark / Check In Tap Button (Acts as +1 for Measure Amount) */}
           <button
             type="button"
             onClick={handleToggle}
-            disabled={isUpdating}
-            className={`min-h-[44px] min-w-[44px] h-11 sm:h-12 sm:w-12 px-4 sm:px-0 rounded-2xl flex items-center justify-center transition-all duration-200 focus:outline-none select-none active:scale-95 flex-1 sm:flex-initial ${
+            disabled={isUpdating || (isQuantitative && isCompleted)}
+            className={`min-h-[44px] min-w-[44px] h-11 sm:h-12 sm:w-12 px-4 sm:px-0 rounded-2xl flex items-center justify-center transition-all duration-200 focus:outline-none select-none flex-1 sm:flex-initial ${
               isCompleted
-                ? 'bg-[#FFB547] text-slate-900 font-black shadow-xs'
-                : 'bg-amber-50 hover:bg-amber-100/80 text-amber-700 border border-amber-200 hover:border-amber-300'
+                ? 'bg-[#FFB547] text-slate-900 font-black shadow-xs cursor-default'
+                : 'bg-amber-50 hover:bg-amber-100/80 text-amber-700 border border-amber-200 hover:border-amber-300 active:scale-95'
             }`}
-            title={isCompleted ? 'Completed today (tap to undo)' : 'Tap to check in today'}
-            aria-label={isCompleted ? 'Challenge completed today' : 'Check in challenge'}
+            title={
+              isCompleted
+                ? 'Completed today!'
+                : isQuantitative
+                ? `Tap to record +1 ${unit} (${currentVal + 1}/${targetVal})`
+                : 'Tap to check in today'
+            }
+            aria-label={
+              isCompleted
+                ? 'Challenge completed today'
+                : isQuantitative
+                ? `Add 1 unit (${currentVal}/${targetVal})`
+                : 'Check in challenge'
+            }
           >
             {isCompleted ? (
               <motion.div
