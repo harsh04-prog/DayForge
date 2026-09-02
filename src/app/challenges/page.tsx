@@ -20,8 +20,7 @@ import {
   Trophy,
   Filter,
   Clock,
-  ArrowRight,
-  ShieldCheck
+  ArrowRight
 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useHabits } from '@/context/HabitContext';
@@ -66,8 +65,7 @@ export default function ChallengesPage() {
   const joinedChallenges = challenges.filter((c) => c.is_joined);
   const filteredChallenges = challenges.filter((c) => {
     if (activeTab === 'joined' && !c.is_joined) return false;
-    if (categoryFilter === 'Strict Only' && !c.is_strict) return false;
-    if (categoryFilter !== 'All' && categoryFilter !== 'Strict Only' && c.category !== categoryFilter) return false;
+    if (categoryFilter !== 'All' && c.category !== categoryFilter) return false;
     return true;
   });
 
@@ -111,7 +109,7 @@ export default function ChallengesPage() {
 
         {/* Category Filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-bold">
-          {['All', 'Strict Only', 'Productivity', 'Fitness', 'Mindfulness', 'Health', 'Study', 'General'].map((cat) => (
+          {['All', 'Productivity', 'Fitness', 'Mindfulness', 'Health', 'Study', 'General'].map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -172,11 +170,6 @@ export default function ChallengesPage() {
 
                       <div className="flex flex-col items-end gap-1">
                         <div className="flex items-center gap-1">
-                          {ch.is_strict && (
-                            <span className="px-2 py-0.5 rounded-md bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-black uppercase tracking-wider">
-                              STRICT
-                            </span>
-                          )}
                           <Badge size="sm" variant="purple" className="text-[10px] font-black">
                             {ch.duration_days} Days
                           </Badge>
@@ -208,15 +201,6 @@ export default function ChallengesPage() {
                     <p className="text-xs text-slate-600 font-medium leading-relaxed mb-3">
                       {ch.description}
                     </p>
-
-                    {/* Strict Rule Description */}
-                    <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200/70 text-[11px] text-slate-600 mb-3 space-y-1">
-                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#6C5CE7]" />
-                        <span>Rule Guidelines:</span>
-                      </div>
-                      <p className="leading-snug text-slate-500">{ch.rule_description}</p>
-                    </div>
 
                     {/* Real Progress Bar if Joined */}
                     {ch.is_joined && (
